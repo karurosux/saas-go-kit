@@ -1,11 +1,10 @@
 # SaaS Go Kit
 
-A modular, production-ready toolkit for building SaaS applications in Go. Extracted from real-world production code and designed with clean architecture principles.
+A modular toolkit for building SaaS applications in Go. Designed with clean architecture principles.
 
 ## 🚀 Features
 
 - **Modular Architecture**: Plug-and-play modules with minimal coupling
-- **Production Ready**: Battle-tested components from real SaaS applications
 - **Interface-Driven**: Easy to test, mock, and extend
 - **Framework Agnostic**: Works with Echo, Gin, or standard `net/http`
 - **Clean Code**: Well-structured, documented, and maintainable
@@ -24,12 +23,11 @@ A modular, production-ready toolkit for building SaaS applications in Go. Extrac
 
 - **[auth-go](./auth-go/)** - Complete authentication system with JWT, email verification, password reset
 
-### Coming Soon
+### Business Modules
 
-- **subscription-go** - Subscription and billing management with Stripe
-- **team-go** - Team management with role-based access control
-- **notification-go** - Multi-channel notification system (email, SMS, push)
-- **analytics-go** - Event tracking and analytics
+- **[subscription-go](./subscription-go/)** - Subscription and billing management with Stripe integration
+- **[team-go](./team-go/)** - Team management with role-based access control
+- **[notification-go](./notification-go/)** - Multi-channel notification system (email, SMS, push)
 
 ## 🏃‍♂️ Quick Start
 
@@ -93,7 +91,9 @@ func main() {
     
     // Register modules
     kit.Register(auth.NewModule(authConfig))
-    // kit.Register(subscription.NewModule(subConfig)) // Coming soon
+    kit.Register(subscription.NewModule(subConfig))
+    kit.Register(team.NewModule(teamConfig))
+    kit.Register(notification.NewModule(notificationConfig))
     
     // Mount all modules
     kit.Mount()
@@ -106,11 +106,15 @@ func main() {
 
 ### Module Documentation
 
-- [Authentication Module](./auth-go/README.md) - User authentication and management
 - [Core Module](./core-go/README.md) - Application foundation and module system
 - [Error Handling](./errors-go/README.md) - Structured error management
 - [Response Formatting](./response-go/README.md) - Standardized API responses
+- [Validation](./validator-go/README.md) - Request validation with custom rules
 - [Rate Limiting](./ratelimit-go/README.md) - Request rate limiting
+- [Authentication](./auth-go/README.md) - User authentication and management
+- [Subscriptions](./subscription-go/README.md) - Subscription and billing management
+- [Team Management](./team-go/README.md) - Team management with RBAC
+- [Notifications](./notification-go/README.md) - Multi-channel notification system
 
 ### Examples
 
@@ -129,6 +133,9 @@ SaaS Go Kit follows clean architecture principles:
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ │
 │  │   Auth   │ │   Sub    │ │   Team   │ │
 │  └──────────┘ └──────────┘ └──────────┘ │
+│  ┌──────────┐ ┌──────────┐              │
+│  │  Notify  │ │  Other   │              │
+│  └──────────┘ └──────────┘              │
 ├─────────────────────────────────────────┤
 │              Service Layer              │
 ├─────────────────────────────────────────┤
@@ -275,14 +282,20 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Built with ❤️ for the Go community
 - Thanks to all contributors and early adopters
 
-## 🗺️ Roadmap
+## 🚀 Current Status
 
-- [ ] **v1.0.0** - Core modules (auth, errors, response, validation, rate limiting)
-- [ ] **v1.1.0** - Subscription and billing module
-- [ ] **v1.2.0** - Team management and RBAC
-- [ ] **v1.3.0** - Notification system
-- [ ] **v1.4.0** - Analytics and event tracking
-- [ ] **v2.0.0** - GraphQL support, advanced caching
+✅ **Available Modules:**
+- Core foundation (core-go, errors-go, response-go, validator-go, ratelimit-go)
+- Authentication system (auth-go)
+- Subscription management (subscription-go)
+- Team management (team-go)
+- Notification system (notification-go)
+
+🔧 **Potential Future Modules:**
+- Analytics and event tracking
+- File storage and management
+- Search functionality
+- API documentation generation
 
 ## 📞 Support
 
