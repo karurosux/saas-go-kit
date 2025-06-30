@@ -48,6 +48,7 @@ type SubscriptionService interface {
 	AssignCustomPlan(ctx context.Context, accountID uuid.UUID, planCode string) error
 	CancelSubscription(ctx context.Context, accountID uuid.UUID) error
 	CanUserAccessResource(ctx context.Context, accountID uuid.UUID, resourceType string) (*PermissionResponse, error)
+	CanUserAccessResourceWithLimitKey(ctx context.Context, accountID uuid.UUID, resourceType string, limitKey string) (*PermissionResponse, error)
 }
 
 // UsageService defines the interface for usage tracking business logic
@@ -55,6 +56,7 @@ type UsageService interface {
 	TrackUsage(ctx context.Context, subscriptionID uuid.UUID, resourceType string, delta int) error
 	RecordUsageEvent(ctx context.Context, event *UsageEvent) error
 	CanAddResource(ctx context.Context, subscriptionID uuid.UUID, resourceType string) (bool, string, error)
+	CanAddResourceWithLimitKey(ctx context.Context, subscriptionID uuid.UUID, resourceType string, limitKey string) (bool, string, error)
 	GetCurrentUsage(ctx context.Context, subscriptionID uuid.UUID) (*SubscriptionUsage, error)
 	GetUsageForPeriod(ctx context.Context, subscriptionID uuid.UUID, start, end time.Time) (*SubscriptionUsage, error)
 	InitializeUsagePeriod(ctx context.Context, subscriptionID uuid.UUID, periodStart, periodEnd time.Time) error

@@ -230,7 +230,7 @@ func (h *Handlers) HandleWebhook(c echo.Context) error {
 }
 
 func (h *Handlers) GetFeatureRegistry(c echo.Context) error {
-	return response.Success(c, FeatureRegistry)
+	return response.Success(c, GetAllFeatures())
 }
 
 func (h *Handlers) GetFeaturesByCategory(c echo.Context) error {

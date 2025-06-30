@@ -100,6 +100,10 @@ func (s *subscriptionService) CancelSubscription(ctx context.Context, accountID 
 }
 
 func (s *subscriptionService) CanUserAccessResource(ctx context.Context, accountID uuid.UUID, resourceType string) (*PermissionResponse, error) {
+	return s.CanUserAccessResourceWithLimitKey(ctx, accountID, resourceType, "")
+}
+
+func (s *subscriptionService) CanUserAccessResourceWithLimitKey(ctx context.Context, accountID uuid.UUID, resourceType string, limitKey string) (*PermissionResponse, error) {
 	subscription, err := s.subscriptionRepo.FindByAccountID(ctx, accountID)
 	if err != nil {
 		return &PermissionResponse{
@@ -122,20 +126,24 @@ func (s *subscriptionService) CanUserAccessResource(ctx context.Context, account
 		return nil, fmt.Errorf("failed to get usage data: %w", err)
 	}
 
-	canAdd, reason := usage.CanAddResource(resourceType, subscription.Plan.Features)
+	canAdd, reason := usage.CanAddResource(resourceType, subscription.Plan.Features, limitKey)
 	var currentCount int64
 	var maxAllowed int64
 
-	switch resourceType {
-	case ResourceTypeRestaurant:
-		currentCount = int64(usage.RestaurantsCount)
-		maxAllowed = subscription.Plan.Features.GetLimit(LimitRestaurants)
-	case ResourceTypeTeamMember:
-		currentCount = int64(usage.TeamMembersCount)
-		maxAllowed = subscription.Plan.Features.GetLimit(LimitTeamMembers)
-	case ResourceTypeFeedback:
-		currentCount = int64(usage.FeedbacksCount)
-		maxAllowed = subscription.Plan.Features.GetLimit(LimitFeedbacksPerMonth)
+	if limitKey != "" {
+		maxAllowed = subscription.Plan.Features.GetLimit(limitKey)
+		switch resourceType {
+		case ResourceTypeRestaurant:
+			currentCount = int64(usage.RestaurantsCount)
+		case ResourceTypeTeamMember:
+			currentCount = int64(usage.TeamMembersCount)
+		case ResourceTypeFeedback:
+			currentCount = int64(usage.FeedbacksCount)
+		case ResourceTypeLocation:
+			currentCount = int64(usage.LocationsCount)
+		case ResourceTypeQRCode:
+			currentCount = int64(usage.QRCodesCount)
+		}
 	}
 
 	return &PermissionResponse{
@@ -227,6 +235,10 @@ func (s *usageService) RecordUsageEvent(ctx context.Context, event *UsageEvent) 
 }
 
 func (s *usageService) CanAddResource(ctx context.Context, subscriptionID uuid.UUID, resourceType string) (bool, string, error) {
+	return s.CanAddResourceWithLimitKey(ctx, subscriptionID, resourceType, "")
+}
+
+func (s *usageService) CanAddResourceWithLimitKey(ctx context.Context, subscriptionID uuid.UUID, resourceType string, limitKey string) (bool, string, error) {
 	subscription, err := s.subscriptionRepo.FindByID(ctx, subscriptionID)
 	if err != nil {
 		return false, "Subscription not found", err
@@ -241,7 +253,7 @@ func (s *usageService) CanAddResource(ctx context.Context, subscriptionID uuid.U
 		return false, "Failed to get usage data", err
 	}
 
-	canAdd, reason := usage.CanAddResource(resourceType, subscription.Plan.Features)
+	canAdd, reason := usage.CanAddResource(resourceType, subscription.Plan.Features, limitKey)
 	return canAdd, reason, nil
 }
 

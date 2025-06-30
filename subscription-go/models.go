@@ -82,26 +82,6 @@ func (pf PlanFeatures) IsUnlimited(key string) bool {
 	return pf.GetLimit(key) == -1
 }
 
-// Common limit keys as constants for type safety
-const (
-	LimitRestaurants            = "max_restaurants"
-	LimitLocationsPerRestaurant = "max_locations_per_restaurant"
-	LimitQRCodesPerLocation     = "max_qr_codes_per_location"
-	LimitFeedbacksPerMonth      = "max_feedbacks_per_month"
-	LimitTeamMembers            = "max_team_members"
-	LimitStorageGB              = "max_storage_gb"
-	LimitAPICallsPerHour        = "max_api_calls_per_hour"
-)
-
-// Common feature flags
-const (
-	FlagAdvancedAnalytics = "advanced_analytics"
-	FlagCustomBranding    = "custom_branding"
-	FlagAPIAccess         = "api_access"
-	FlagPrioritySupport   = "priority_support"
-	FlagWhiteLabel        = "white_label"
-	FlagCustomDomain      = "custom_domain"
-)
 
 // GORM Scanner/Valuer interfaces for JSONB
 func (pf PlanFeatures) Value() (driver.Value, error) {
@@ -123,16 +103,8 @@ func (s *Subscription) IsActive() bool {
 	return s.Status == SubscriptionActive && time.Now().Before(s.CurrentPeriodEnd)
 }
 
-func (s *Subscription) CanAddResource(resourceType string, currentCount int) bool {
-	var limitKey string
-	switch resourceType {
-	case "restaurant":
-		limitKey = LimitRestaurants
-	case "team_member":
-		limitKey = LimitTeamMembers
-	case "feedback":
-		limitKey = LimitFeedbacksPerMonth
-	default:
+func (s *Subscription) CanAddResource(resourceType string, currentCount int, limitKey string) bool {
+	if limitKey == "" {
 		return true
 	}
 
@@ -175,7 +147,7 @@ const (
 	EventTypeUpdate = "update"
 )
 
-// Resource types
+// Resource types - these can be customized per application
 const (
 	ResourceTypeFeedback   = "feedback"
 	ResourceTypeRestaurant = "restaurant"
@@ -185,25 +157,22 @@ const (
 )
 
 // CanAddResource checks if a resource can be added based on plan limits
-func (u *SubscriptionUsage) CanAddResource(resourceType string, plan PlanFeatures) (bool, string) {
-	var limitKey string
-	var currentUsage int64
+func (u *SubscriptionUsage) CanAddResource(resourceType string, plan PlanFeatures, limitKey string) (bool, string) {
+	if limitKey == "" {
+		return true, ""
+	}
 
+	var currentUsage int64
 	switch resourceType {
 	case ResourceTypeFeedback:
-		limitKey = LimitFeedbacksPerMonth
 		currentUsage = int64(u.FeedbacksCount)
 	case ResourceTypeRestaurant:
-		limitKey = LimitRestaurants
 		currentUsage = int64(u.RestaurantsCount)
 	case ResourceTypeLocation:
-		limitKey = LimitLocationsPerRestaurant
 		currentUsage = int64(u.LocationsCount)
 	case ResourceTypeQRCode:
-		limitKey = LimitQRCodesPerLocation
 		currentUsage = int64(u.QRCodesCount)
 	case ResourceTypeTeamMember:
-		limitKey = LimitTeamMembers
 		currentUsage = int64(u.TeamMembersCount)
 	default:
 		return true, ""
@@ -216,7 +185,11 @@ func (u *SubscriptionUsage) CanAddResource(resourceType string, plan PlanFeature
 
 	if currentUsage >= limit {
 		def, _ := GetFeatureDefinition(limitKey)
-		return false, fmt.Sprintf("%s limit reached", def.DisplayName)
+		displayName := limitKey
+		if def.DisplayName != "" {
+			displayName = def.DisplayName
+		}
+		return false, fmt.Sprintf("%s limit reached", displayName)
 	}
 
 	return true, ""
@@ -246,141 +219,27 @@ type FeatureDefinition struct {
 	Metadata      map[string]interface{} `json:"metadata,omitempty"`
 }
 
-// FeatureRegistry holds all feature definitions
-var FeatureRegistry = map[string]FeatureDefinition{
-	// Limits
-	LimitRestaurants: {
-		Key:           LimitRestaurants,
-		Type:          FeatureTypeLimit,
-		DisplayName:   "Restaurants",
-		Description:   "Maximum number of restaurants",
-		Unit:          "restaurants",
-		UnlimitedText: "Unlimited restaurants",
-		Format:        "{value} restaurant(s)",
-		Icon:          "store",
-		Category:      "core",
-		SortOrder:     1,
-	},
-	LimitFeedbacksPerMonth: {
-		Key:           LimitFeedbacksPerMonth,
-		Type:          FeatureTypeLimit,
-		DisplayName:   "Monthly Feedbacks",
-		Description:   "Maximum feedbacks per month",
-		Unit:          "feedbacks/month",
-		UnlimitedText: "Unlimited feedbacks",
-		Format:        "{value} feedbacks/month",
-		Icon:          "message-square",
-		Category:      "core",
-		SortOrder:     2,
-	},
-	LimitQRCodesPerLocation: {
-		Key:           LimitQRCodesPerLocation,
-		Type:          FeatureTypeLimit,
-		DisplayName:   "QR Codes",
-		Description:   "QR codes per location",
-		Unit:          "QR codes/location",
-		UnlimitedText: "Unlimited QR codes",
-		Format:        "{value} QR codes per location",
-		Icon:          "qr-code",
-		Category:      "core",
-		SortOrder:     3,
-	},
-	LimitTeamMembers: {
-		Key:           LimitTeamMembers,
-		Type:          FeatureTypeLimit,
-		DisplayName:   "Team Members",
-		Description:   "Maximum team members",
-		Unit:          "members",
-		UnlimitedText: "Unlimited team members",
-		Format:        "{value} team member(s)",
-		Icon:          "users",
-		Category:      "collaboration",
-		SortOrder:     4,
-	},
-	LimitStorageGB: {
-		Key:           LimitStorageGB,
-		Type:          FeatureTypeLimit,
-		DisplayName:   "Storage",
-		Description:   "Storage space for media files",
-		Unit:          "GB",
-		UnlimitedText: "Unlimited storage",
-		Format:        "{value} GB storage",
-		Icon:          "hard-drive",
-		Category:      "resources",
-		SortOrder:     5,
-	},
-	LimitAPICallsPerHour: {
-		Key:           LimitAPICallsPerHour,
-		Type:          FeatureTypeLimit,
-		DisplayName:   "API Rate Limit",
-		Description:   "API calls per hour",
-		Unit:          "calls/hour",
-		UnlimitedText: "Unlimited API calls",
-		Format:        "{value} API calls/hour",
-		Icon:          "activity",
-		Category:      "developer",
-		SortOrder:     10,
-	},
+// FeatureRegistry is now configurable and should be injected via service initialization
+var FeatureRegistry map[string]FeatureDefinition
 
-	// Flags
-	FlagAdvancedAnalytics: {
-		Key:         FlagAdvancedAnalytics,
-		Type:        FeatureTypeFlag,
-		DisplayName: "Advanced Analytics",
-		Description: "Detailed insights and reporting",
-		Icon:        "bar-chart",
-		Category:    "analytics",
-		SortOrder:   20,
-	},
-	FlagCustomBranding: {
-		Key:         FlagCustomBranding,
-		Type:        FeatureTypeFlag,
-		DisplayName: "Custom Branding",
-		Description: "Customize with your brand",
-		Icon:        "palette",
-		Category:    "customization",
-		SortOrder:   21,
-	},
-	FlagAPIAccess: {
-		Key:         FlagAPIAccess,
-		Type:        FeatureTypeFlag,
-		DisplayName: "API Access",
-		Description: "Programmatic access via API",
-		Icon:        "code",
-		Category:    "developer",
-		SortOrder:   22,
-	},
-	FlagPrioritySupport: {
-		Key:         FlagPrioritySupport,
-		Type:        FeatureTypeFlag,
-		DisplayName: "Priority Support",
-		Description: "24/7 priority customer support",
-		Icon:        "headphones",
-		Category:    "support",
-		SortOrder:   23,
-	},
-	FlagWhiteLabel: {
-		Key:         FlagWhiteLabel,
-		Type:        FeatureTypeFlag,
-		DisplayName: "White Label",
-		Description: "Remove branding",
-		Icon:        "eye-off",
-		Category:    "customization",
-		SortOrder:   24,
-	},
-	FlagCustomDomain: {
-		Key:         FlagCustomDomain,
-		Type:        FeatureTypeFlag,
-		DisplayName: "Custom Domain",
-		Description: "Use your own domain",
-		Icon:        "globe",
-		Category:    "customization",
-		SortOrder:   25,
-	},
+// InitializeFeatureRegistry sets up the feature registry with provided definitions
+func InitializeFeatureRegistry(features map[string]FeatureDefinition) {
+	FeatureRegistry = features
+}
+
+// GetAllFeatures returns all features in the registry
+func GetAllFeatures() map[string]FeatureDefinition {
+	if FeatureRegistry == nil {
+		return make(map[string]FeatureDefinition)
+	}
+	return FeatureRegistry
 }
 
 // GetFeatureDefinition returns the definition for a feature key
 func GetFeatureDefinition(key string) (FeatureDefinition, bool) {
+	if FeatureRegistry == nil {
+		return FeatureDefinition{}, false
+	}
 	def, exists := FeatureRegistry[key]
 	return def, exists
 }
@@ -388,6 +247,9 @@ func GetFeatureDefinition(key string) (FeatureDefinition, bool) {
 // GetFeaturesByCategory returns all features in a category
 func GetFeaturesByCategory(category string) []FeatureDefinition {
 	var features []FeatureDefinition
+	if FeatureRegistry == nil {
+		return features
+	}
 	for _, def := range FeatureRegistry {
 		if def.Category == category {
 			features = append(features, def)
