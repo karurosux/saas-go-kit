@@ -6,7 +6,7 @@ A modular toolkit for building SaaS applications in Go. Designed with clean arch
 
 - **Modular Architecture**: Plug-and-play modules with minimal coupling
 - **Interface-Driven**: Easy to test, mock, and extend
-- **Framework Agnostic**: Works with Echo, Gin, or standard `net/http`
+- **Echo Framework**: Built specifically for the Echo web framework
 - **Clean Code**: Well-structured, documented, and maintainable
 
 ## 📦 Modules
@@ -119,7 +119,7 @@ func main() {
 ### Examples
 
 - [Basic App](./examples/basic-app/) - Complete working example with authentication
-- [Advanced Integration](./examples/advanced/) - Multi-module integration (coming soon)
+- [Microservices Guide](./MICROSERVICES.md) - Using SaaS Go Kit with microservices architecture
 
 ## 🏗️ Architecture
 
@@ -299,7 +299,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- 📖 [Documentation](./docs/)
 - 🐛 [Issue Tracker](https://github.com/karurosux/saas-go-kit/issues)
 - 💬 [Discussions](https://github.com/karurosux/saas-go-kit/discussions)
 
