@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/saas-go-kit/auth-go"
+	"github.com/karurosux/saas-go-kit/auth-go"
 	"gorm.io/gorm"
 )
 

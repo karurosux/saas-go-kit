@@ -35,49 +35,40 @@ func (m *Module) Name() string {
 	return "notification"
 }
 
-func (m *Module) Mount(e *echo.Echo) error {
-	g := e.Group(m.config.RoutePrefix)
-
-	// Core notification endpoints
-	if m.config.RequireAuth {
-		// Note: Authentication middleware should be added by the application
-		// g.Use(authMiddleware)
+func (m *Module) Routes() []core.Route {
+	prefix := m.config.RoutePrefix
+	routes := []core.Route{
+		{Method: "POST", Path: prefix + "/email", Handler: m.handlers.SendEmail},
+		{Method: "POST", Path: prefix + "/email/template", Handler: m.handlers.SendTemplateEmail},
+		{Method: "POST", Path: prefix + "/sms", Handler: m.handlers.SendSMS},
+		{Method: "POST", Path: prefix + "/push", Handler: m.handlers.SendPushNotification},
+		{Method: "POST", Path: prefix + "/email/bulk", Handler: m.handlers.SendBulkEmails},
+		{Method: "GET", Path: prefix + "/verify/email", Handler: m.handlers.VerifyEmail},
+		{Method: "GET", Path: prefix + "/verify/phone", Handler: m.handlers.VerifyPhoneNumber},
+		{Method: "POST", Path: prefix + "/common/auth/email-verification", Handler: m.handlers.SendEmailVerification},
+		{Method: "POST", Path: prefix + "/common/auth/password-reset", Handler: m.handlers.SendPasswordReset},
+		{Method: "POST", Path: prefix + "/common/team/invitation", Handler: m.handlers.SendTeamInvitation},
+		{Method: "POST", Path: prefix + "/common/team/role-changed", Handler: m.handlers.SendRoleChanged},
+		{Method: "POST", Path: prefix + "/common/billing/payment-succeeded", Handler: m.handlers.SendPaymentSucceeded},
+		{Method: "POST", Path: prefix + "/common/billing/payment-failed", Handler: m.handlers.SendPaymentFailed},
+		{Method: "POST", Path: prefix + "/common/billing/trial-ending", Handler: m.handlers.SendTrialEnding},
 	}
-
-	// Basic notification endpoints
-	g.POST("/email", m.handlers.SendEmail)
-	g.POST("/email/template", m.handlers.SendTemplateEmail)
-	g.POST("/sms", m.handlers.SendSMS)
-	g.POST("/push", m.handlers.SendPushNotification)
-	g.POST("/email/bulk", m.handlers.SendBulkEmails)
-
-	// Verification endpoints
-	g.GET("/verify/email", m.handlers.VerifyEmail)
-	g.GET("/verify/phone", m.handlers.VerifyPhoneNumber)
-
-	// Common notification patterns
-	commonGroup := g.Group("/common")
-	commonGroup.POST("/auth/email-verification", m.handlers.SendEmailVerification)
-	commonGroup.POST("/auth/password-reset", m.handlers.SendPasswordReset)
-	commonGroup.POST("/team/invitation", m.handlers.SendTeamInvitation)
-	commonGroup.POST("/team/role-changed", m.handlers.SendRoleChanged)
-	commonGroup.POST("/billing/payment-succeeded", m.handlers.SendPaymentSucceeded)
-	commonGroup.POST("/billing/payment-failed", m.handlers.SendPaymentFailed)
-	commonGroup.POST("/billing/trial-ending", m.handlers.SendTrialEnding)
-
-	// Test endpoints (only in development)
+	
 	if m.config.EnableTestEndpoints {
-		testGroup := g.Group("/test")
-		testGroup.POST("/email", m.handlers.TestEmail)
+		routes = append(routes, core.Route{Method: "POST", Path: prefix + "/test/email", Handler: m.handlers.TestEmail})
 	}
+	
+	return routes
+}
 
-	return nil
+func (m *Module) Middleware() []echo.MiddlewareFunc {
+	return []echo.MiddlewareFunc{}
 }
 
 func (m *Module) Dependencies() []string {
-	return []string{} // No dependencies on other modules
+	return []string{}
 }
 
-func (m *Module) Priority() int {
-	return 50 // Medium priority
+func (m *Module) Init(deps map[string]core.Module) error {
+	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/saas-go-kit/errors-go"
+	"github.com/karurosux/saas-go-kit/errors-go"
 )
 
 // Response represents a standard API response

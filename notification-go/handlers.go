@@ -1,8 +1,6 @@
 package notification
 
 import (
-	"net/http"
-
 	"github.com/karurosux/saas-go-kit/errors-go"
 	"github.com/karurosux/saas-go-kit/response-go"
 	"github.com/labstack/echo/v4"

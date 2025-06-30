@@ -34,44 +34,31 @@ func (m *Module) Name() string {
 	return "team"
 }
 
-func (m *Module) Mount(e *echo.Echo) error {
-	g := e.Group(m.config.RoutePrefix)
-
-	// Public routes (no authentication required)
-	g.POST("/accept-invite", m.handlers.AcceptInvitation)
-
-	// Team management routes (require authentication)
-	teamGroup := g.Group("")
-	// Note: Authentication middleware should be added by the application
-	if m.config.RequireAuth {
-		// teamGroup.Use(authMiddleware) // This would be added by the application
+func (m *Module) Routes() []core.Route {
+	prefix := m.config.RoutePrefix
+	return []core.Route{
+		{Method: "POST", Path: prefix + "/accept-invite", Handler: m.handlers.AcceptInvitation},
+		{Method: "GET", Path: prefix + "/members", Handler: m.handlers.ListMembers},
+		{Method: "GET", Path: prefix + "/members/:id", Handler: m.handlers.GetMember},
+		{Method: "POST", Path: prefix + "/members/invite", Handler: m.handlers.InviteMember},
+		{Method: "PUT", Path: prefix + "/members/:id/role", Handler: m.handlers.UpdateMemberRole},
+		{Method: "DELETE", Path: prefix + "/members/:id", Handler: m.handlers.RemoveMember},
+		{Method: "POST", Path: prefix + "/members/:id/resend-invite", Handler: m.handlers.ResendInvitation},
+		{Method: "DELETE", Path: prefix + "/members/:id/cancel-invite", Handler: m.handlers.CancelInvitation},
+		{Method: "GET", Path: prefix + "/stats", Handler: m.handlers.GetTeamStats},
+		{Method: "GET", Path: prefix + "/permissions/:permission", Handler: m.handlers.CheckPermission},
+		{Method: "GET", Path: prefix + "/roles/:role/permissions", Handler: m.handlers.GetRolePermissions},
 	}
+}
 
-	// Member management
-	teamGroup.GET("/members", m.handlers.ListMembers)
-	teamGroup.GET("/members/:id", m.handlers.GetMember)
-	teamGroup.POST("/members/invite", m.handlers.InviteMember)
-	teamGroup.PUT("/members/:id/role", m.handlers.UpdateMemberRole)
-	teamGroup.DELETE("/members/:id", m.handlers.RemoveMember)
-
-	// Invitation management
-	teamGroup.POST("/members/:id/resend-invite", m.handlers.ResendInvitation)
-	teamGroup.DELETE("/members/:id/cancel-invite", m.handlers.CancelInvitation)
-
-	// Team statistics and info
-	teamGroup.GET("/stats", m.handlers.GetTeamStats)
-
-	// Permission checking
-	teamGroup.GET("/permissions/:permission", m.handlers.CheckPermission)
-	teamGroup.GET("/roles/:role/permissions", m.handlers.GetRolePermissions)
-
-	return nil
+func (m *Module) Middleware() []echo.MiddlewareFunc {
+	return []echo.MiddlewareFunc{}
 }
 
 func (m *Module) Dependencies() []string {
-	return []string{"auth"} // Typically depends on auth module for user context
+	return []string{"auth"}
 }
 
-func (m *Module) Priority() int {
-	return 90 // High priority as it's often needed by other modules
+func (m *Module) Init(deps map[string]core.Module) error {
+	return nil
 }

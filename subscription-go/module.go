@@ -39,42 +39,34 @@ func (m *Module) Name() string {
 	return "subscription"
 }
 
-func (m *Module) Mount(e *echo.Echo) error {
-	g := e.Group(m.config.RoutePrefix)
+func (m *Module) Routes() []core.Route {
+	prefix := m.config.RoutePrefix
+	return []core.Route{
+		{Method: "GET", Path: prefix + "/plans", Handler: m.handlers.GetAvailablePlans},
+		{Method: "GET", Path: prefix + "/features", Handler: m.handlers.GetFeatureRegistry},
+		{Method: "GET", Path: prefix + "/features/category/:category", Handler: m.handlers.GetFeaturesByCategory},
+		{Method: "GET", Path: prefix + "/me", Handler: m.handlers.GetUserSubscription},
+		{Method: "GET", Path: prefix + "/usage", Handler: m.handlers.GetCurrentUsage},
+		{Method: "GET", Path: prefix + "/permissions/:resourceType", Handler: m.handlers.CheckResourcePermission},
+		{Method: "POST", Path: prefix + "/checkout", Handler: m.handlers.CreateCheckoutSession},
+		{Method: "POST", Path: prefix + "/cancel", Handler: m.handlers.CancelSubscription},
+		{Method: "POST", Path: prefix + "/portal", Handler: m.handlers.CreatePortalSession},
+		{Method: "GET", Path: prefix + "/payment-methods", Handler: m.handlers.GetPaymentMethods},
+		{Method: "GET", Path: prefix + "/invoices", Handler: m.handlers.GetInvoiceHistory},
+		{Method: "GET", Path: prefix + "/admin/plans", Handler: m.handlers.GetAllPlans},
+		{Method: "POST", Path: prefix + "/admin/assign/:accountId/:planCode", Handler: m.handlers.AssignCustomPlan},
+		{Method: "POST", Path: prefix + "/webhooks/stripe", Handler: m.handlers.HandleWebhook},
+	}
+}
 
-	// Public routes
-	g.GET("/plans", m.handlers.GetAvailablePlans)
-	g.GET("/features", m.handlers.GetFeatureRegistry)
-	g.GET("/features/category/:category", m.handlers.GetFeaturesByCategory)
-
-	// User routes (require authentication)
-	userGroup := g.Group("")
-	// Note: Authentication middleware should be added by the application
-	userGroup.GET("/me", m.handlers.GetUserSubscription)
-	userGroup.GET("/usage", m.handlers.GetCurrentUsage)
-	userGroup.GET("/permissions/:resourceType", m.handlers.CheckResourcePermission)
-	userGroup.POST("/checkout", m.handlers.CreateCheckoutSession)
-	userGroup.POST("/cancel", m.handlers.CancelSubscription)
-	userGroup.POST("/portal", m.handlers.CreatePortalSession)
-	userGroup.GET("/payment-methods", m.handlers.GetPaymentMethods)
-	userGroup.GET("/invoices", m.handlers.GetInvoiceHistory)
-
-	// Admin routes (require admin privileges)
-	adminGroup := g.Group("/admin")
-	// Note: Admin middleware should be added by the application
-	adminGroup.GET("/plans", m.handlers.GetAllPlans)
-	adminGroup.POST("/assign/:accountId/:planCode", m.handlers.AssignCustomPlan)
-
-	// Webhook routes
-	g.POST("/webhooks/stripe", m.handlers.HandleWebhook)
-
-	return nil
+func (m *Module) Middleware() []echo.MiddlewareFunc {
+	return []echo.MiddlewareFunc{}
 }
 
 func (m *Module) Dependencies() []string {
-	return []string{"auth"} // Typically depends on auth module for user context
+	return []string{"auth"}
 }
 
-func (m *Module) Priority() int {
-	return 100 // Standard priority
+func (m *Module) Init(deps map[string]core.Module) error {
+	return nil
 }

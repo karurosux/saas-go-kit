@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/saas-go-kit/core-go"
-	"github.com/saas-go-kit/errors-go"
-	"github.com/saas-go-kit/response-go"
+	"github.com/karurosux/saas-go-kit/core-go"
+	"github.com/karurosux/saas-go-kit/errors-go"
+	"github.com/karurosux/saas-go-kit/response-go"
 )
 
 // Module provides auth module for saas-go-kit
@@ -94,9 +94,7 @@ func (m *Module) registerRoutes() {
 	}
 
 	// Add public routes
-	for _, route := range publicRoutes {
-		m.AddRoute(route)
-	}
+	m.AddRoutes(publicRoutes)
 
 	// Protected routes
 	protectedRoutes := []core.Route{
@@ -146,10 +144,10 @@ func (m *Module) registerRoutes() {
 
 	// Add auth middleware to protected routes
 	authMiddleware := m.RequireAuth()
-	for _, route := range protectedRoutes {
-		route.Middlewares = append([]echo.MiddlewareFunc{authMiddleware}, route.Middlewares...)
-		m.AddRoute(route)
+	for i := range protectedRoutes {
+		protectedRoutes[i].Middlewares = append([]echo.MiddlewareFunc{authMiddleware}, protectedRoutes[i].Middlewares...)
 	}
+	m.AddRoutes(protectedRoutes)
 
 	// Add global middleware
 	m.AddMiddleware(m.OptionalAuth())

@@ -7,7 +7,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/saas-go-kit/errors-go"
+	"github.com/karurosux/saas-go-kit/errors-go"
 )
 
 // Service implements the AuthService interface

@@ -2,9 +2,9 @@ package auth
 
 import (
 	"github.com/labstack/echo/v4"
-	"github.com/saas-go-kit/errors-go"
-	"github.com/saas-go-kit/response-go"
-	"github.com/saas-go-kit/validator-go"
+	"github.com/karurosux/saas-go-kit/errors-go"
+	"github.com/karurosux/saas-go-kit/response-go"
+	"github.com/karurosux/saas-go-kit/validator-go"
 )
 
 // Handlers provides HTTP handlers for auth operations

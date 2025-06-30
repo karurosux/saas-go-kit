@@ -7,7 +7,6 @@ import (
 	"net/smtp"
 	"regexp"
 	"strings"
-	"time"
 )
 
 type SMTPProvider struct {

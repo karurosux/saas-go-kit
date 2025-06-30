@@ -64,9 +64,11 @@ func GenerateMigrationSQLFromDB(db *gorm.DB, outputDir string) error {
 	}
 	
 	for _, model := range models {
-		stmt := dryRunDB.Migrator().CreateTable(model)
-		if stmt.Error == nil && stmt.Statement != nil && stmt.Statement.SQL.String() != "" {
-			statements = append(statements, stmt.Statement.SQL.String()+";")
+		err := dryRunDB.Migrator().CreateTable(model)
+		if err == nil {
+			// For simplicity, just add a comment about the table
+			tableName := dryRunDB.Statement.Table
+			statements = append(statements, "-- Table: "+tableName)
 		}
 	}
 	

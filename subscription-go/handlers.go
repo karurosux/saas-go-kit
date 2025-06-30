@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"io"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -196,8 +197,8 @@ func (h *Handlers) GetInvoiceHistory(c echo.Context) error {
 
 	limit := 20
 	if limitStr := c.QueryParam("limit"); limitStr != "" {
-		if parsedLimit, err := echo.QueryParamsBinder(c).Int("limit").BindError(); err == nil {
-			limit = parsedLimit
+		if err := echo.QueryParamsBinder(c).Int("limit", &limit).BindError(); err != nil {
+			limit = 20
 		}
 	}
 
@@ -210,7 +211,7 @@ func (h *Handlers) GetInvoiceHistory(c echo.Context) error {
 }
 
 func (h *Handlers) HandleWebhook(c echo.Context) error {
-	payload, err := c.Request().GetBody()
+	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
 		return response.Error(c, errors.BadRequest("Invalid payload"))
 	}
@@ -220,7 +221,7 @@ func (h *Handlers) HandleWebhook(c echo.Context) error {
 		return response.Error(c, errors.BadRequest("Missing signature"))
 	}
 
-	err = h.paymentService.HandleWebhookEvent(c.Request().Context(), payload, signature)
+	err = h.paymentService.HandleWebhookEvent(c.Request().Context(), body, signature)
 	if err != nil {
 		return response.Error(c, errors.Internal("Failed to process webhook"))
 	}

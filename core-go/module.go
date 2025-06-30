@@ -80,6 +80,11 @@ func (m *BaseModule) AddRoute(route Route) {
 	m.routes = append(m.routes, route)
 }
 
+// AddRoutes adds multiple routes to the module
+func (m *BaseModule) AddRoutes(routes []Route) {
+	m.routes = append(m.routes, routes...)
+}
+
 // AddMiddleware adds middleware to the module
 func (m *BaseModule) AddMiddleware(middleware echo.MiddlewareFunc) {
 	m.middleware = append(m.middleware, middleware)

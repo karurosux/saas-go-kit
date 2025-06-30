@@ -130,6 +130,11 @@ func BadRequest(message string) *AppError {
 	return New("BAD_REQUEST", message, http.StatusBadRequest)
 }
 
+// Unauthorized creates an unauthorized error with a custom message
+func Unauthorized(message string) *AppError {
+	return New("UNAUTHORIZED", message, http.StatusUnauthorized)
+}
+
 // Conflict creates a conflict error with a custom message
 func Conflict(message string) *AppError {
 	return New("CONFLICT", message, http.StatusConflict)

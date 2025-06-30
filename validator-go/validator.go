@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/saas-go-kit/errors-go"
+	"github.com/karurosux/saas-go-kit/errors-go"
 )
 
 // Validator wraps the go-playground validator
