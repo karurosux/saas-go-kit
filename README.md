@@ -276,12 +276,6 @@ go run .
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
-
-- Inspired by real-world SaaS applications
-- Built with ❤️ for the Go community
-- Thanks to all contributors and early adopters
-
 ## 🚀 Current Status
 
 ✅ **Available Modules:**
@@ -301,7 +295,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - 🐛 [Issue Tracker](https://github.com/karurosux/saas-go-kit/issues)
 - 💬 [Discussions](https://github.com/karurosux/saas-go-kit/discussions)
-
----
-
-Made with ❤️ by developers, for developers building the next generation of SaaS applications.
