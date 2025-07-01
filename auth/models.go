@@ -19,9 +19,14 @@ type DefaultAccount struct {
 	EmailVerifiedAt      *time.Time             `json:"email_verified_at,omitempty"`
 	DeactivatedAt        *time.Time             `json:"deactivated_at,omitempty"`
 	ScheduledDeletionAt  *time.Time             `json:"scheduled_deletion_at,omitempty"`
-	Metadata             map[string]interface{} `json:"metadata,omitempty"`
+	Metadata             map[string]interface{} `json:"metadata,omitempty" gorm:"type:jsonb"`
 	CreatedAt            time.Time              `json:"created_at"`
 	UpdatedAt            time.Time              `json:"updated_at"`
+}
+
+// TableName specifies the table name for GORM
+func (DefaultAccount) TableName() string {
+	return "auth.users"
 }
 
 // GetID returns the account ID
@@ -124,6 +129,11 @@ type DefaultVerificationToken struct {
 	ExpiresAt time.Time  `json:"expires_at"`
 	UsedAt    *time.Time `json:"used_at,omitempty"`
 	CreatedAt time.Time  `json:"created_at"`
+}
+
+// TableName specifies the table name for GORM
+func (DefaultVerificationToken) TableName() string {
+	return "auth.verification_tokens"
 }
 
 // GetToken returns the token string

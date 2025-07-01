@@ -18,12 +18,28 @@ type Module struct {
 	handlers *Handlers
 }
 
+// EndpointMiddleware holds middleware for specific endpoints
+type EndpointMiddleware struct {
+	Register       []echo.MiddlewareFunc
+	Login          []echo.MiddlewareFunc
+	VerifyEmail    []echo.MiddlewareFunc
+	ForgotPassword []echo.MiddlewareFunc
+	ResetPassword  []echo.MiddlewareFunc
+	RefreshToken   []echo.MiddlewareFunc
+	Logout         []echo.MiddlewareFunc
+	Profile        []echo.MiddlewareFunc
+	UpdateProfile  []echo.MiddlewareFunc
+	ChangePassword []echo.MiddlewareFunc
+	ChangeEmail    []echo.MiddlewareFunc
+}
+
 // ModuleConfig holds module configuration
 type ModuleConfig struct {
-	Service         AuthService
-	RoutePrefix     string
-	RequireVerified bool
-	RateLimiter     echo.MiddlewareFunc
+	Service            AuthService
+	RoutePrefix        string
+	RequireVerified    bool
+	RateLimiter        echo.MiddlewareFunc
+	EndpointMiddleware EndpointMiddleware
 }
 
 // NewModule creates a new auth module
@@ -47,7 +63,7 @@ func NewModule(config ModuleConfig) *Module {
 
 // registerRoutes registers all auth routes
 func (m *Module) registerRoutes() {
-	// Public routes
+	// Public routes with per-endpoint middleware
 	publicRoutes := []core.Route{
 		{
 			Method:      "POST",
@@ -55,6 +71,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.Register,
 			Name:        "auth.register",
 			Description: "Register a new account",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.Register),
 		},
 		{
 			Method:      "POST",
@@ -62,6 +79,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.Login,
 			Name:        "auth.login",
 			Description: "Login to an account",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.Login),
 		},
 		{
 			Method:      "GET",
@@ -69,6 +87,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.VerifyEmail,
 			Name:        "auth.verify-email",
 			Description: "Verify email address",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.VerifyEmail),
 		},
 		{
 			Method:      "POST",
@@ -76,6 +95,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.ForgotPassword,
 			Name:        "auth.forgot-password",
 			Description: "Request password reset",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.ForgotPassword),
 		},
 		{
 			Method:      "POST",
@@ -83,20 +103,14 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.ResetPassword,
 			Name:        "auth.reset-password",
 			Description: "Reset password with token",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.ResetPassword),
 		},
-	}
-
-	// Add rate limiting to public routes if configured
-	if m.config.RateLimiter != nil {
-		for i := range publicRoutes {
-			publicRoutes[i].Middlewares = append(publicRoutes[i].Middlewares, m.config.RateLimiter)
-		}
 	}
 
 	// Add public routes
 	m.AddRoutes(publicRoutes)
 
-	// Protected routes
+	// Protected routes with per-endpoint middleware
 	protectedRoutes := []core.Route{
 		{
 			Method:      "POST",
@@ -104,6 +118,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.RefreshToken,
 			Name:        "auth.refresh",
 			Description: "Refresh JWT token",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.RefreshToken),
 		},
 		{
 			Method:      "POST",
@@ -111,6 +126,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.Logout,
 			Name:        "auth.logout",
 			Description: "Logout from account",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.Logout),
 		},
 		{
 			Method:      "GET",
@@ -118,6 +134,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.GetProfile,
 			Name:        "auth.me",
 			Description: "Get current account profile",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.Profile),
 		},
 		{
 			Method:      "PUT",
@@ -125,6 +142,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.UpdateProfile,
 			Name:        "auth.update-profile",
 			Description: "Update account profile",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.UpdateProfile),
 		},
 		{
 			Method:      "POST",
@@ -132,6 +150,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.ChangePassword,
 			Name:        "auth.change-password",
 			Description: "Change account password",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.ChangePassword),
 		},
 		{
 			Method:      "POST",
@@ -139,6 +158,7 @@ func (m *Module) registerRoutes() {
 			Handler:     m.handlers.ResendVerification,
 			Name:        "auth.resend-verification",
 			Description: "Resend verification email",
+			Middlewares: m.buildMiddleware(m.config.EndpointMiddleware.ChangeEmail),
 		},
 	}
 
@@ -151,6 +171,23 @@ func (m *Module) registerRoutes() {
 
 	// Add global middleware
 	m.AddMiddleware(m.OptionalAuth())
+}
+
+// buildMiddleware combines endpoint-specific middleware with global rate limiter
+func (m *Module) buildMiddleware(endpointMiddleware []echo.MiddlewareFunc) []echo.MiddlewareFunc {
+	var middlewares []echo.MiddlewareFunc
+	
+	// Add rate limiter first if configured
+	if m.config.RateLimiter != nil {
+		middlewares = append(middlewares, m.config.RateLimiter)
+	}
+	
+	// Add endpoint-specific middleware
+	if len(endpointMiddleware) > 0 {
+		middlewares = append(middlewares, endpointMiddleware...)
+	}
+	
+	return middlewares
 }
 
 // RequireAuth returns middleware that requires authentication
