@@ -5,8 +5,10 @@ A modular toolkit for building SaaS applications in Go. Designed with clean arch
 ## 🚀 Features
 
 - **Modular Architecture**: Plug-and-play modules with minimal coupling
-- **Interface-Driven**: Easy to test, mock, and extend
+- **Interface-Driven**: Easy to test, mock, and extend  
 - **Echo Framework**: Built specifically for the Echo web framework
+- **Universal Client Generation**: Auto-discover modules and generate type-safe TypeScript clients with zero configuration
+- **Custom Module Support**: Seamlessly integrate your business logic alongside built-in modules
 - **Clean Code**: Well-structured, documented, and maintainable
 
 ## 📦 Modules
@@ -28,6 +30,12 @@ A modular toolkit for building SaaS applications in Go. Designed with clean arch
 - **[subscription-go](./subscription-go/)** - Subscription and billing management with Stripe integration
 - **[team-go](./team-go/)** - Team management with role-based access control
 - **[notification-go](./notification-go/)** - Multi-channel notification system (email, SMS, push)
+
+### Development Tools
+
+- **[Universal Client Generation](./CLIENT_GENERATION.md)** - Zero-config TypeScript client generation with auto-discovery
+- **[health-go](./health-go/)** - Application health monitoring with multiple check types
+- **[role-go](./role-go/)** - Role-based access control and permissions management
 
 ## 🏃‍♂️ Quick Start
 
@@ -101,6 +109,108 @@ func main() {
     e.Start(":8080")
 }
 ```
+
+### 4. Adding Custom Modules
+
+SaaS Go Kit is designed to work seamlessly with your custom business modules:
+
+```go
+// internal/products/module.go
+package products
+
+import "github.com/karurosux/saas-go-kit/core-go"
+
+type Module struct {
+    service *Service
+}
+
+func NewModule(service *Service) *Module {
+    return &Module{service: service}
+}
+
+func (m *Module) Routes() []core.Route {
+    return []core.Route{
+        {Method: "GET", Path: "/products", Handler: m.listProducts},
+        {Method: "POST", Path: "/products", Handler: m.createProduct},
+        {Method: "GET", Path: "/products/:id", Handler: m.getProduct},
+    }
+}
+
+// main.go
+func main() {
+    kit := core.NewKit(e, core.KitConfig{Debug: true})
+    
+    // Mix built-in and custom modules
+    kit.Register(auth.NewModule(authConfig))
+    kit.Register(products.NewModule(productService))  // Your custom module
+    kit.Register(orders.NewModule(orderService))      // Another custom module
+    
+    kit.Mount()
+    e.Start(":8080")
+}
+```
+
+### 5. Generate TypeScript Clients (Universal Auto-Discovery)
+
+The client generation tools automatically discover **both built-in and custom modules** without configuration:
+
+```bash
+# Extract routes from your application (auto-discovers all modules)
+go run github.com/karurosux/saas-go-kit/cmd/extract-routes
+
+# Generate TypeScript clients from discovered routes
+go run github.com/karurosux/saas-go-kit/cmd/generate-clients -routes=./generated/routes.json -o=./generated/clients
+```
+
+Or use the convenient make targets:
+
+```bash
+# Extract routes and generate clients in one command
+make generate-clients
+```
+
+The tools automatically:
+- ✅ **Detect saas-go-kit modules** (auth, health, role, etc.) from your imports
+- ✅ **Detect custom modules** (products, orders, etc.) from your code
+- ✅ **Extract TypeScript types** from your Go structs  
+- ✅ **Generate type-safe clients** with authentication support
+
+```typescript
+// Use generated clients with full type safety
+import { AuthClient, HealthClient, ProductsClient } from './generated/clients';
+
+const auth = new AuthClient('http://localhost:8080', '/api/v1', {
+  getToken: () => localStorage.getItem('token')
+});
+
+const products = new ProductsClient('http://localhost:8080', '/api/v1', {
+  getToken: () => localStorage.getItem('token')
+});
+
+// Built-in module - fully typed!
+await auth.login({ email, password });
+const profile = await auth.profile();
+
+// Your custom module - also fully typed!
+const productList = await products.list();
+await products.create({ name: "Widget", price: 99.99 });
+```
+
+See [Client Generation Documentation](./CLIENT_GENERATION.md) for detailed setup.
+
+## ⚡ Quick Client Generation
+
+Generate TypeScript clients for **any** Go project using saas-go-kit in just two commands:
+
+```bash
+# 1. Extract routes (auto-discovers all modules)
+go run github.com/karurosux/saas-go-kit/cmd/extract-routes
+
+# 2. Generate TypeScript clients
+go run github.com/karurosux/saas-go-kit/cmd/generate-clients -routes=./generated/routes.json -o=./generated/clients
+```
+
+**Works with any project** - detects both saas-go-kit modules and your custom business modules automatically. No configuration required! 🚀
 
 ## 📖 Documentation
 
@@ -281,9 +391,17 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ✅ **Available Modules:**
 - Core foundation (core-go, errors-go, response-go, validator-go, ratelimit-go)
 - Authentication system (auth-go)
+- Health monitoring (health-go)
+- Role-based access control (role-go)
 - Subscription management (subscription-go)
 - Team management (team-go)
 - Notification system (notification-go)
+
+✅ **Universal Development Tools:**
+- **Auto-discovering route extraction** (`cmd/extract-routes`)
+- **TypeScript client generation** (`cmd/generate-clients`)
+- **Zero-config setup** - works with any saas-go-kit project
+- **Custom module support** - automatically detects your business modules
 
 🔧 **Potential Future Modules:**
 - Analytics and event tracking

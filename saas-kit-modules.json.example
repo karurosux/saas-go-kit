@@ -1,0 +1,32 @@
+[
+  {
+    "name": "auth",
+    "import_path": "github.com/karurosux/saas-go-kit/auth-go",
+    "module_path": "./auth"
+  },
+  {
+    "name": "role",
+    "import_path": "github.com/karurosux/saas-go-kit/role-go",
+    "module_path": "./role-go"
+  },
+  {
+    "name": "health",
+    "import_path": "github.com/karurosux/saas-go-kit/health-go",
+    "module_path": "./health-go"
+  },
+  {
+    "name": "subscription",
+    "import_path": "github.com/karurosux/saas-go-kit/subscription-go",
+    "module_path": "./subscription-go"
+  },
+  {
+    "name": "team",
+    "import_path": "github.com/karurosux/saas-go-kit/team-go",
+    "module_path": "./team-go"
+  },
+  {
+    "name": "notification",
+    "import_path": "github.com/karurosux/saas-go-kit/notification-go",
+    "module_path": "./notification-go"
+  }
+]
