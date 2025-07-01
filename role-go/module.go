@@ -18,11 +18,29 @@ type Module struct {
 	service    RoleService
 	rbac       *RBACMiddleware
 	routePrefix string
+	config     ModuleConfig
+}
+
+// EndpointMiddleware holds middleware for specific endpoints
+type EndpointMiddleware struct {
+	CreateRole           []echo.MiddlewareFunc
+	GetRoles             []echo.MiddlewareFunc
+	GetRole              []echo.MiddlewareFunc
+	UpdateRole           []echo.MiddlewareFunc
+	DeleteRole           []echo.MiddlewareFunc
+	AssignRoleToUser     []echo.MiddlewareFunc
+	UnassignRoleFromUser []echo.MiddlewareFunc
+	GetUsersWithRole     []echo.MiddlewareFunc
+	GetUserRoles         []echo.MiddlewareFunc
+	GetUserPermissions   []echo.MiddlewareFunc
+	CheckUserPermission  []echo.MiddlewareFunc
+	GetSystemRoles       []echo.MiddlewareFunc
 }
 
 type ModuleConfig struct {
-	RoutePrefix string
-	RBAC        *RBACMiddleware
+	RoutePrefix        string
+	RBAC               *RBACMiddleware
+	EndpointMiddleware EndpointMiddleware
 }
 
 // NewModule creates a new role module
@@ -35,6 +53,7 @@ func NewModule(service RoleService, config ...ModuleConfig) core.Module {
 		if config[0].RBAC != nil {
 			cfg.RBAC = config[0].RBAC
 		}
+		cfg.EndpointMiddleware = config[0].EndpointMiddleware
 	}
 
 	module := &Module{
@@ -42,6 +61,7 @@ func NewModule(service RoleService, config ...ModuleConfig) core.Module {
 		service:     service,
 		rbac:        cfg.RBAC,
 		routePrefix: cfg.RoutePrefix,
+		config:      cfg,
 	}
 
 	module.setupRoutes()
@@ -56,35 +76,35 @@ func (m *Module) setupRoutes() {
 			Path:    m.routePrefix,
 			Handler: m.createRole,
 			Name:    "create_role",
-			Middlewares: m.getMiddleware("roles:create"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.CreateRole, "roles:create"),
 		},
 		{
 			Method:  http.MethodGet,
 			Path:    m.routePrefix,
 			Handler: m.getRoles,
 			Name:    "list_roles",
-			Middlewares: m.getMiddleware("roles:read"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.GetRoles, "roles:read"),
 		},
 		{
 			Method:  http.MethodGet,
 			Path:    m.routePrefix + "/:id",
 			Handler: m.getRole,
 			Name:    "get_role",
-			Middlewares: m.getMiddleware("roles:read"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.GetRole, "roles:read"),
 		},
 		{
 			Method:  http.MethodPut,
 			Path:    m.routePrefix + "/:id",
 			Handler: m.updateRole,
 			Name:    "update_role",
-			Middlewares: m.getMiddleware("roles:update"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.UpdateRole, "roles:update"),
 		},
 		{
 			Method:  http.MethodDelete,
 			Path:    m.routePrefix + "/:id",
 			Handler: m.deleteRole,
 			Name:    "delete_role",
-			Middlewares: m.getMiddleware("roles:delete"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.DeleteRole, "roles:delete"),
 		},
 		
 		// User role assignments
@@ -93,21 +113,21 @@ func (m *Module) setupRoutes() {
 			Path:    m.routePrefix + "/:id/users",
 			Handler: m.assignRoleToUser,
 			Name:    "assign_role_to_user",
-			Middlewares: m.getMiddleware("roles:assign"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.AssignRoleToUser, "roles:assign"),
 		},
 		{
 			Method:  http.MethodDelete,
 			Path:    m.routePrefix + "/:id/users/:userId",
 			Handler: m.unassignRoleFromUser,
 			Name:    "unassign_role_from_user",
-			Middlewares: m.getMiddleware("roles:assign"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.UnassignRoleFromUser, "roles:assign"),
 		},
 		{
 			Method:  http.MethodGet,
 			Path:    m.routePrefix + "/:id/users",
 			Handler: m.getUsersWithRole,
 			Name:    "get_users_with_role",
-			Middlewares: m.getMiddleware("roles:read"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.GetUsersWithRole, "roles:read"),
 		},
 		
 		// User permissions - these endpoints are more permissive
@@ -116,21 +136,21 @@ func (m *Module) setupRoutes() {
 			Path:    m.routePrefix + "/users/:userId/roles",
 			Handler: m.getUserRoles,
 			Name:    "get_user_roles",
-			Middlewares: m.getMiddleware("users:read", "roles:read"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.GetUserRoles, "users:read", "roles:read"),
 		},
 		{
 			Method:  http.MethodGet,
 			Path:    m.routePrefix + "/users/:userId/permissions",
 			Handler: m.getUserPermissions,
 			Name:    "get_user_permissions",
-			Middlewares: m.getMiddleware("users:read", "roles:read"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.GetUserPermissions, "users:read", "roles:read"),
 		},
 		{
 			Method:  http.MethodPost,
 			Path:    m.routePrefix + "/users/:userId/check",
 			Handler: m.checkUserPermission,
 			Name:    "check_user_permission",
-			Middlewares: m.getMiddleware("users:read", "roles:read"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.CheckUserPermission, "users:read", "roles:read"),
 		},
 		
 		// System roles - admin only
@@ -139,24 +159,32 @@ func (m *Module) setupRoutes() {
 			Path:    m.routePrefix + "/system",
 			Handler: m.getSystemRoles,
 			Name:    "get_system_roles",
-			Middlewares: m.getMiddleware("admin:*"),
+			Middlewares: m.getMiddleware(m.config.EndpointMiddleware.GetSystemRoles, "admin:*"),
 		},
 	}
 
 	m.AddRoutes(routes)
 }
 
-// getMiddleware returns middleware for the given permissions
-func (m *Module) getMiddleware(permissions ...string) []echo.MiddlewareFunc {
-	if m.rbac == nil {
-		return []echo.MiddlewareFunc{}
+// getMiddleware returns middleware for the given permissions and endpoint-specific middleware
+func (m *Module) getMiddleware(endpointMiddleware []echo.MiddlewareFunc, permissions ...string) []echo.MiddlewareFunc {
+	var middlewares []echo.MiddlewareFunc
+
+	// Add RBAC middleware if configured
+	if m.rbac != nil && len(permissions) > 0 {
+		if len(permissions) == 1 {
+			middlewares = append(middlewares, m.rbac.RequirePermission(permissions[0]))
+		} else {
+			middlewares = append(middlewares, m.rbac.RequireAnyPermission(permissions...))
+		}
 	}
 
-	if len(permissions) == 1 {
-		return []echo.MiddlewareFunc{m.rbac.RequirePermission(permissions[0])}
+	// Add endpoint-specific middleware
+	if len(endpointMiddleware) > 0 {
+		middlewares = append(middlewares, endpointMiddleware...)
 	}
 
-	return []echo.MiddlewareFunc{m.rbac.RequireAnyPermission(permissions...)}
+	return middlewares
 }
 
 // DTOs

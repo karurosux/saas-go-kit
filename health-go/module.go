@@ -11,13 +11,23 @@ import (
 type Module struct {
 	*core.BaseModule
 	service Service
+	config  ModuleConfig
+}
+
+// EndpointMiddleware holds middleware for specific endpoints
+type EndpointMiddleware struct {
+	HealthCheck  []echo.MiddlewareFunc
+	Liveness     []echo.MiddlewareFunc
+	Readiness    []echo.MiddlewareFunc
+	Detailed     []echo.MiddlewareFunc
 }
 
 // ModuleConfig holds module configuration
 type ModuleConfig struct {
-	Service       Service
-	RoutePrefix   string
-	DetailedCheck bool // If true, returns detailed check information
+	Service            Service
+	RoutePrefix        string
+	DetailedCheck      bool // If true, returns detailed check information
+	EndpointMiddleware EndpointMiddleware
 }
 
 // NewModule creates a new health module
@@ -29,48 +39,53 @@ func NewModule(config ModuleConfig) *Module {
 	module := &Module{
 		BaseModule: core.NewBaseModule("health"),
 		service:    config.Service,
+		config:     config,
 	}
 
 	// Register routes
-	module.registerRoutes(config)
+	module.registerRoutes()
 
 	return module
 }
 
 // registerRoutes registers all health routes
-func (m *Module) registerRoutes(config ModuleConfig) {
+func (m *Module) registerRoutes() {
 	routes := []core.Route{
 		{
 			Method:      "GET",
-			Path:        config.RoutePrefix,
-			Handler:     m.handleHealthCheck(config.DetailedCheck),
+			Path:        m.config.RoutePrefix,
+			Handler:     m.handleHealthCheck(m.config.DetailedCheck),
 			Name:        "health.check",
 			Description: "Health check endpoint",
+			Middlewares: m.config.EndpointMiddleware.HealthCheck,
 		},
 		{
 			Method:      "GET",
-			Path:        config.RoutePrefix + "/live",
+			Path:        m.config.RoutePrefix + "/live",
 			Handler:     m.handleLiveness,
 			Name:        "health.liveness",
 			Description: "Kubernetes liveness probe",
+			Middlewares: m.config.EndpointMiddleware.Liveness,
 		},
 		{
 			Method:      "GET",
-			Path:        config.RoutePrefix + "/ready",
+			Path:        m.config.RoutePrefix + "/ready",
 			Handler:     m.handleReadiness,
 			Name:        "health.readiness",
 			Description: "Kubernetes readiness probe",
+			Middlewares: m.config.EndpointMiddleware.Readiness,
 		},
 	}
 
 	// Add detailed endpoint if enabled
-	if config.DetailedCheck {
+	if m.config.DetailedCheck {
 		routes = append(routes, core.Route{
 			Method:      "GET",
-			Path:        config.RoutePrefix + "/detailed",
+			Path:        m.config.RoutePrefix + "/detailed",
 			Handler:     m.handleDetailedCheck,
 			Name:        "health.detailed",
 			Description: "Detailed health check with all components",
+			Middlewares: m.config.EndpointMiddleware.Detailed,
 		})
 	}
 
