@@ -76,6 +76,9 @@ func (k *Kit) Register(module Module) error {
 		log.Printf("[SaaS Kit] Registered module: %s", name)
 	}
 
+	// Capture module for extraction if enabled
+	k.captureModule(module)
+
 	return nil
 }
 
@@ -299,6 +302,9 @@ func (b *Builder) Build() (*echo.Echo, error) {
 	if err := kit.Mount(); err != nil {
 		return nil, err
 	}
+	
+	// Exit if in extraction mode
+	ExitIfExtracting()
 	
 	return b.echo, nil
 }

@@ -61,6 +61,9 @@ import (
 )
 
 func main() {
+    // Check for route extraction flags (for client generation)
+    core.CheckExtractionFlags()
+    
     // Using the main library (re-exports)
     kit := saasgokit.NewKit(nil, saasgokit.KitConfig{
         Debug: true,
@@ -155,8 +158,8 @@ func main() {
 The client generation tools automatically discover **both built-in and custom modules** without configuration:
 
 ```bash
-# Extract routes from your application (auto-discovers all modules)
-go run github.com/karurosux/saas-go-kit/cmd/extract-routes
+# Extract routes from your application
+go run . --extract-routes --extract-output ./generated/routes.json
 
 # Generate TypeScript clients from discovered routes
 go run github.com/karurosux/saas-go-kit/cmd/generate-clients -routes=./generated/routes.json -o=./generated/clients
@@ -168,6 +171,8 @@ Or use the convenient make targets:
 # Extract routes and generate clients in one command
 make generate-clients
 ```
+
+**Note:** Your application needs to call `core.CheckExtractionFlags()` early in `main()` to support direct extraction.
 
 The tools automatically:
 - ✅ **Detect saas-go-kit modules** (auth, health, role, etc.) from your imports
@@ -204,13 +209,15 @@ Generate TypeScript clients for **any** Go project using saas-go-kit in just two
 
 ```bash
 # 1. Extract routes (auto-discovers all modules)
-go run github.com/karurosux/saas-go-kit/cmd/extract-routes
+go run . --extract-routes --extract-output ./generated/routes.json
 
 # 2. Generate TypeScript clients
 go run github.com/karurosux/saas-go-kit/cmd/generate-clients -routes=./generated/routes.json -o=./generated/clients
 ```
 
 **Works with any project** - detects both saas-go-kit modules and your custom business modules automatically. No configuration required! 🚀
+
+**Prerequisites:** Add `core.CheckExtractionFlags()` to your `main()` function for direct extraction support.
 
 ## 📖 Documentation
 
@@ -398,7 +405,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Notification system (notification-go)
 
 ✅ **Universal Development Tools:**
-- **Auto-discovering route extraction** (`cmd/extract-routes`)
+- **Auto-discovering route extraction** (direct application flags)
 - **TypeScript client generation** (`cmd/generate-clients`)
 - **Zero-config setup** - works with any saas-go-kit project
 - **Custom module support** - automatically detects your business modules
