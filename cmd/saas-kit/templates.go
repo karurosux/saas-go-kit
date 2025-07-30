@@ -1,0 +1,224 @@
+package main
+
+import (
+	"fmt"
+	"os"
+	"path/filepath"
+	"text/template"
+)
+
+// copyCore copies core utilities to the project
+func copyCore() error {
+	coreFiles := map[string]string{
+		"internal/core/response.go": coreResponseTemplate,
+		"internal/core/errors.go":   coreErrorsTemplate,
+		"internal/core/kit.go":      coreKitTemplate,
+		"internal/core/module.go":   coreModuleTemplate,
+	}
+
+	for path, content := range coreFiles {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return err
+		}
+		
+		if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// copyModuleTemplate copies a module template to the project
+func copyModuleTemplate(moduleName string, data TemplateData) error {
+	moduleDef, exists := availableModules[moduleName]
+	if !exists {
+		return fmt.Errorf("unknown module: %s", moduleName)
+	}
+
+	// Create module directory
+	moduleDir := filepath.Join("internal", moduleName)
+	if err := os.MkdirAll(moduleDir, 0755); err != nil {
+		return err
+	}
+
+	// Copy module files
+	templates := getModuleTemplates(moduleName)
+	
+	for fileName, templateContent := range templates {
+		filePath := filepath.Join(moduleDir, fileName)
+		
+		// Create directory if needed
+		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+			return err
+		}
+		
+		// Render template
+		tmpl, err := template.New(fileName).Parse(templateContent)
+		if err != nil {
+			return fmt.Errorf("failed to parse template %s: %v", fileName, err)
+		}
+		
+		file, err := os.Create(filePath)
+		if err != nil {
+			return fmt.Errorf("failed to create file %s: %v", filePath, err)
+		}
+		defer file.Close()
+		
+		if err := tmpl.Execute(file, data); err != nil {
+			return fmt.Errorf("failed to execute template %s: %v", fileName, err)
+		}
+	}
+
+	// Copy migration files
+	if err := copyMigrations(moduleName, data); err != nil {
+		return err
+	}
+
+	// Create config file
+	if err := createModuleConfig(moduleName, data); err != nil {
+		return err
+	}
+
+	// Create documentation
+	if err := createModuleDoc(moduleName, data); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// getModuleTemplates returns the templates for a specific module
+func getModuleTemplates(moduleName string) map[string]string {
+	switch moduleName {
+	case "auth":
+		return authTemplates
+	case "subscription":
+		return subscriptionTemplates
+	case "team":
+		return teamTemplates
+	case "notification":
+		return notificationTemplates
+	case "health":
+		return healthTemplates
+	case "role":
+		return roleTemplates
+	case "job":
+		return jobTemplates
+	case "sse":
+		return sseTemplates
+	case "container":
+		return containerTemplates
+	default:
+		return map[string]string{}
+	}
+}
+
+// copyMigrations copies migration files for a module
+func copyMigrations(moduleName string, data TemplateData) error {
+	migrationTemplate := getMigrationTemplate(moduleName)
+	if migrationTemplate == "" {
+		return nil // No migrations for this module
+	}
+
+	migrationPath := filepath.Join("migrations", fmt.Sprintf("001_%s_tables.sql", moduleName))
+	
+	tmpl, err := template.New("migration").Parse(migrationTemplate)
+	if err != nil {
+		return err
+	}
+	
+	file, err := os.Create(migrationPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	return tmpl.Execute(file, data)
+}
+
+// createModuleConfig creates a config file for the module
+func createModuleConfig(moduleName string, data TemplateData) error {
+	configTemplate := getConfigTemplate(moduleName)
+	if configTemplate == "" {
+		return nil // No config needed
+	}
+
+	configPath := filepath.Join("config", moduleName+".go")
+	
+	tmpl, err := template.New("config").Parse(configTemplate)
+	if err != nil {
+		return err
+	}
+	
+	file, err := os.Create(configPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	return tmpl.Execute(file, data)
+}
+
+// createModuleDoc creates documentation for the module
+func createModuleDoc(moduleName string, data TemplateData) error {
+	docTemplate := getDocTemplate(moduleName)
+	if docTemplate == "" {
+		return nil
+	}
+
+	docPath := filepath.Join("docs", moduleName+".md")
+	
+	tmpl, err := template.New("doc").Parse(docTemplate)
+	if err != nil {
+		return err
+	}
+	
+	file, err := os.Create(docPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	
+	return tmpl.Execute(file, data)
+}
+
+// generateClients generates TypeScript clients
+func generateClients() error {
+	// TODO: Integrate with existing client generation
+	fmt.Println("Generating TypeScript clients...")
+	return nil
+}
+
+// Template helper functions
+func getMigrationTemplate(moduleName string) string {
+	// Return migration templates based on module
+	// This would be populated with actual SQL templates
+	return ""
+}
+
+func getConfigTemplate(moduleName string) string {
+	// Return config templates based on module
+	// This would be populated with actual Go config templates
+	return ""
+}
+
+func getDocTemplate(moduleName string) string {
+	// Return documentation templates based on module
+	return fmt.Sprintf(`# %s Module
+
+This module was generated by saas-kit.
+
+## Configuration
+
+The module can be configured in ` + "`config/%s.go`" + `.
+
+## Usage
+
+See the generated handlers and service files for implementation details.
+
+## Customization
+
+All files are copied to your project and can be freely modified.
+`, moduleName, moduleName)
+}
