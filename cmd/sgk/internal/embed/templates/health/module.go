@@ -6,51 +6,40 @@ import (
 	"os"
 	"time"
 	
+	"github.com/samber/do"
+	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
+	
 	"{{.Project.GoModule}}/internal/core"
 	healthcheckers "{{.Project.GoModule}}/internal/health/checkers"
 	healthconstants "{{.Project.GoModule}}/internal/health/constants"
 	healthcontroller "{{.Project.GoModule}}/internal/health/controller"
+	healthinterface "{{.Project.GoModule}}/internal/health/interface"
 	healthservice "{{.Project.GoModule}}/internal/health/service"
-	"github.com/labstack/echo/v4"
-	"github.com/redis/go-redis/v9"
-	"gorm.io/gorm"
 )
 
-// RegisterModule registers the health module with the container
-func RegisterModule(c *core.Container) error {
-	// Get dependencies from container
-	eInt, err := c.Get("echo")
-	if err != nil {
-		return fmt.Errorf("echo instance not found in container: %w", err)
-	}
-	e, ok := eInt.(*echo.Echo)
-	if !ok {
-		return fmt.Errorf("echo instance has invalid type")
-	}
-	
+// Service providers for dependency injection
+
+// ProvideHealthService provides the health service
+func ProvideHealthService(i *do.Injector) (healthinterface.HealthService, error) {
 	// Get version from environment or default
 	version := os.Getenv("APP_VERSION")
 	if version == "" {
 		version = "1.0.0"
 	}
 	
-	// Create health service
 	healthService := healthservice.NewHealthService(version)
 	
-	// Register database checker if available
-	if dbInt, err := c.Get("db"); err == nil {
-		if db, ok := dbInt.(*gorm.DB); ok {
-			dbChecker := healthcheckers.NewDatabaseChecker(db, true) // Critical
-			healthService.RegisterChecker(dbChecker)
-		}
-	}
+	// Register database checker
+	db := do.MustInvoke[*gorm.DB](i)
+	dbChecker := healthcheckers.NewDatabaseChecker(db, true) // Critical
+	healthService.RegisterChecker(dbChecker)
 	
-	// Register Redis checker if available
-	if redisInt, err := c.Get("redis"); err == nil {
-		if redisClient, ok := redisInt.(*redis.Client); ok {
-			redisChecker := healthcheckers.NewRedisChecker(redisClient, false) // Non-critical
-			healthService.RegisterChecker(redisChecker)
-		}
+	// Register Redis checker if Redis is available
+	if redisClient, err := do.Invoke[*redis.Client](i); err == nil {
+		redisChecker := healthcheckers.NewRedisChecker(redisClient, false) // Non-critical
+		healthService.RegisterChecker(redisChecker)
 	}
 	
 	// Register disk space checker
@@ -74,13 +63,28 @@ func RegisterModule(c *core.Container) error {
 		healthService.RegisterChecker(httpChecker)
 	}
 	
-	// Create controller
-	healthController := healthcontroller.NewHealthController(healthService)
+	return healthService, nil
+}
+
+// ProvideHealthController provides the health controller
+func ProvideHealthController(i *do.Injector) (*healthcontroller.HealthController, error) {
+	healthService := do.MustInvoke[healthinterface.HealthService](i)
+	return healthcontroller.NewHealthController(healthService), nil
+}
+
+// RegisterModule registers the health module with the container
+func RegisterModule(container *core.Container) error {
+	// Register health services
+	do.Provide(container, ProvideHealthService)
+	do.Provide(container, ProvideHealthController)
 	
 	// Register routes
+	e := do.MustInvoke[*echo.Echo](container)
+	healthController := do.MustInvoke[*healthcontroller.HealthController](container)
 	healthController.RegisterRoutes(e, "/health")
 	
 	// Start periodic health checks
+	healthService := do.MustInvoke[healthinterface.HealthService](container)
 	checkInterval := healthconstants.DefaultPeriodicInterval
 	if intervalStr := os.Getenv("HEALTH_CHECK_INTERVAL"); intervalStr != "" {
 		if interval, err := time.ParseDuration(intervalStr); err == nil {
@@ -90,14 +94,6 @@ func RegisterModule(c *core.Container) error {
 	
 	ctx := context.Background()
 	healthService.StartPeriodicChecks(ctx, checkInterval)
-	
-	// Register health service in container for other modules to use
-	c.Set("health.service", healthService)
-	
-	// TODO: Register shutdown handler to stop periodic checks
-	// c.OnShutdown(func() {
-	//	healthService.StopPeriodicChecks()
-	// })
 	
 	return nil
 }

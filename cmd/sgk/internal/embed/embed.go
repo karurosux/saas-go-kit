@@ -194,3 +194,12 @@ func GenerateClients() error {
 	fmt.Println("Generating TypeScript clients...")
 	return nil
 }
+
+// ReadEmbeddedFile reads a file from the embedded filesystem
+func ReadEmbeddedFile(path string) (string, error) {
+	content, err := templatesFS.ReadFile(path)
+	if err != nil {
+		return "", fmt.Errorf("failed to read embedded file %s: %w", path, err)
+	}
+	return string(content), nil
+}
