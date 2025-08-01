@@ -1,27 +1,25 @@
 package rolemiddleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
 	"{{.Project.GoModule}}/internal/core"
-	"{{.Project.GoModule}}/internal/role/constants"
-	"{{.Project.GoModule}}/internal/role/interface"
+	roleconstants "{{.Project.GoModule}}/internal/role/constants"
+	roleinterface "{{.Project.GoModule}}/internal/role/interface"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-// UserIDExtractor extracts user ID from the request context
 type UserIDExtractor func(c echo.Context) (uuid.UUID, error)
 
-// MiddlewareConfig configuration for RBAC middleware
 type MiddlewareConfig struct {
 	UserIDExtractor UserIDExtractor
 	Skipper         func(c echo.Context) bool
 	ErrorHandler    func(c echo.Context, err error) error
 }
 
-// DefaultUserIDExtractor extracts user ID from "user_id" key in context
 func DefaultUserIDExtractor(c echo.Context) (uuid.UUID, error) {
 	userID := c.Get("user_id")
 	if userID == nil {
@@ -38,18 +36,15 @@ func DefaultUserIDExtractor(c echo.Context) (uuid.UUID, error) {
 	}
 }
 
-// DefaultErrorHandler returns unauthorized error
 func DefaultErrorHandler(c echo.Context, err error) error {
-	return core.Error(c, core.Unauthorized("Access denied: insufficient permissions"))
+	return core.Unauthorized(c, fmt.Errorf("Access denied: insufficient permissions"))
 }
 
-// RBACMiddleware provides role-based access control
 type RBACMiddleware struct {
 	service roleinterface.RoleService
 	config  MiddlewareConfig
 }
 
-// NewRBACMiddleware creates a new RBAC middleware
 func NewRBACMiddleware(service roleinterface.RoleService, config ...MiddlewareConfig) *RBACMiddleware {
 	cfg := MiddlewareConfig{
 		UserIDExtractor: DefaultUserIDExtractor,
@@ -74,7 +69,6 @@ func NewRBACMiddleware(service roleinterface.RoleService, config ...MiddlewareCo
 	}
 }
 
-// RequirePermission middleware that requires a specific permission
 func (m *RBACMiddleware) RequirePermission(permission string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -101,7 +95,6 @@ func (m *RBACMiddleware) RequirePermission(permission string) echo.MiddlewareFun
 	}
 }
 
-// RequireAnyPermission middleware that requires at least one of the specified permissions
 func (m *RBACMiddleware) RequireAnyPermission(permissions ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -128,7 +121,6 @@ func (m *RBACMiddleware) RequireAnyPermission(permissions ...string) echo.Middle
 	}
 }
 
-// RequireAllPermissions middleware that requires all specified permissions
 func (m *RBACMiddleware) RequireAllPermissions(permissions ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -155,7 +147,6 @@ func (m *RBACMiddleware) RequireAllPermissions(permissions ...string) echo.Middl
 	}
 }
 
-// RequireRole middleware that requires a specific role
 func (m *RBACMiddleware) RequireRole(roleName string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -184,7 +175,6 @@ func (m *RBACMiddleware) RequireRole(roleName string) echo.MiddlewareFunc {
 	}
 }
 
-// RequireAnyRole middleware that requires at least one of the specified roles
 func (m *RBACMiddleware) RequireAnyRole(roleNames ...string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -218,7 +208,6 @@ func (m *RBACMiddleware) RequireAnyRole(roleNames ...string) echo.MiddlewareFunc
 	}
 }
 
-// InjectUserPermissions middleware that injects all user permissions into context
 func (m *RBACMiddleware) InjectUserPermissions() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -244,7 +233,6 @@ func (m *RBACMiddleware) InjectUserPermissions() echo.MiddlewareFunc {
 	}
 }
 
-// InjectUserRoles middleware that injects all user roles into context
 func (m *RBACMiddleware) InjectUserRoles() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -270,7 +258,6 @@ func (m *RBACMiddleware) InjectUserRoles() echo.MiddlewareFunc {
 	}
 }
 
-// CheckPermission checks if user has permission and adds result to context
 func (m *RBACMiddleware) CheckPermission(permission string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {

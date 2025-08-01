@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	
-	"{{.Project.GoModule}}/internal/auth/interface"
+	authinterface "{{.Project.GoModule}}/internal/auth/interface"
 )
 
 // DefaultTokenGenerator implements token generation

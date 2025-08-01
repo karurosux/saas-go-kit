@@ -15,27 +15,22 @@ type Session struct {
 	RefreshExpiresAt   time.Time `json:"refresh_expires_at"`
 }
 
-// GetUserID returns the user ID
 func (s *Session) GetUserID() uuid.UUID {
 	return s.UserID
 }
 
-// GetToken returns the session token
 func (s *Session) GetToken() string {
 	return s.Token
 }
 
-// GetRefreshToken returns the refresh token
 func (s *Session) GetRefreshToken() string {
 	return s.RefreshToken
 }
 
-// GetExpiresAt returns the token expiration time
 func (s *Session) GetExpiresAt() time.Time {
 	return s.ExpiresAt
 }
 
-// GetRefreshExpiresAt returns the refresh token expiration time
 func (s *Session) GetRefreshExpiresAt() time.Time {
 	return s.RefreshExpiresAt
 }

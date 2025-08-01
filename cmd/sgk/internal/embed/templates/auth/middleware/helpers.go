@@ -1,13 +1,12 @@
 package authmiddleware
 
 import (
-	"{{.Project.GoModule}}/internal/auth/constants"
-	"{{.Project.GoModule}}/internal/auth/interface"
+	authconstants "{{.Project.GoModule}}/internal/auth/constants"
+	authinterface "{{.Project.GoModule}}/internal/auth/interface"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-// GetUserIDFromContext retrieves user ID from context
 func GetUserIDFromContext(c echo.Context) (uuid.UUID, error) {
 	userID := c.Get(authconstants.ContextKeyUserID)
 	if userID == nil {
@@ -24,7 +23,6 @@ func GetUserIDFromContext(c echo.Context) (uuid.UUID, error) {
 	}
 }
 
-// GetAccountFromContext retrieves account from context
 func GetAccountFromContext(c echo.Context) authinterface.Account {
 	if account := c.Get(authconstants.ContextKeyAccount); account != nil {
 		if acc, ok := account.(authinterface.Account); ok {
@@ -34,7 +32,6 @@ func GetAccountFromContext(c echo.Context) authinterface.Account {
 	return nil
 }
 
-// GetSessionFromContext retrieves session from context
 func GetSessionFromContext(c echo.Context) authinterface.Session {
 	if session := c.Get(authconstants.ContextKeySession); session != nil {
 		if sess, ok := session.(authinterface.Session); ok {
@@ -44,7 +41,6 @@ func GetSessionFromContext(c echo.Context) authinterface.Session {
 	return nil
 }
 
-// IsAuthenticated checks if user is authenticated
 func IsAuthenticated(c echo.Context) bool {
 	if isAuth := c.Get(authconstants.ContextKeyIsAuthenticated); isAuth != nil {
 		if value, ok := isAuth.(bool); ok {
@@ -54,7 +50,6 @@ func IsAuthenticated(c echo.Context) bool {
 	return false
 }
 
-// RequireEmailVerified checks if user's email is verified
 func RequireEmailVerified(c echo.Context) bool {
 	account := GetAccountFromContext(c)
 	if account == nil {
@@ -63,7 +58,6 @@ func RequireEmailVerified(c echo.Context) bool {
 	return account.GetEmailVerified()
 }
 
-// RequirePhoneVerified checks if user's phone is verified
 func RequirePhoneVerified(c echo.Context) bool {
 	account := GetAccountFromContext(c)
 	if account == nil {

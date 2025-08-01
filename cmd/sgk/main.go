@@ -131,33 +131,10 @@ func addModuleWithAllDeps(moduleName string, options map[string]interface{}) err
 		return err
 	}
 
-	// Convert options to interface{} map for storage
-	configMap := make(map[string]interface{})
-	for k, v := range options {
-		configMap[k] = v
-	}
-
 	// Add module to project config
 	config.Modules[moduleName] = project.ModuleInfo{
-		Version:              moduleDef.Version,
-		InstalledAt:          time.Now(),
-		Config:               configMap,
-		InternalDependencies: moduleDef.InternalDependencies,
-		ExternalDependencies: moduleDef.Dependencies,
-	}
-	
-	// Update dependencies
-	for _, dep := range moduleDef.Dependencies {
-		found := false
-		for _, existing := range config.Dependencies {
-			if existing == dep {
-				found = true
-				break
-			}
-		}
-		if !found {
-			config.Dependencies = append(config.Dependencies, dep)
-		}
+		Version:     moduleDef.Version,
+		InstalledAt: time.Now(),
 	}
 
 	// Save project config
@@ -205,12 +182,6 @@ func listInstalledModulesFromConfig() error {
 	for name, module := range config.Modules {
 		fmt.Printf("  %s (v%s)\n", name, module.Version)
 		fmt.Printf("    Installed: %s\n", module.InstalledAt.Format("2006-01-02 15:04:05"))
-		if len(module.Config) > 0 {
-			fmt.Printf("    Config: %v\n", module.Config)
-		}
-		if len(module.InternalDependencies) > 0 {
-			fmt.Printf("    Dependencies: %v\n", module.InternalDependencies)
-		}
 		fmt.Println()
 	}
 
@@ -275,18 +246,31 @@ func updateMainGoWithModule(goModule, moduleName string) error {
 		return fmt.Errorf("could not find '// Register modules' marker in main.go")
 	}
 	
-	// Find where to insert the new registration
+	// Find where to insert the new registration - always after existing registrations
 	afterMarker := mainContent[markerPos:]
 	lines := strings.Split(afterMarker, "\n")
 	insertLine := 1 // Default to line after marker
 	
-	// Find existing registrations
+	// Find the last existing registration to insert after it
+	inRegistrationBlock := false
 	for i := 1; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
-		if strings.Contains(line, ".RegisterModule(container)") {
+		
+		// Check if we're entering a registration block
+		if strings.Contains(line, "if err := ") && strings.Contains(line, ".RegisterModule(container)") {
+			inRegistrationBlock = true
+			continue
+		}
+		
+		// Check if we're exiting a registration block (closing brace)
+		if inRegistrationBlock && line == "}" {
 			insertLine = i + 1
-		} else if line == "" && insertLine > 1 {
-			// Found empty line after registrations
+			inRegistrationBlock = false
+			continue
+		}
+		
+		// If we hit a non-registration line and we're not in a block, we're done
+		if !inRegistrationBlock && line != "" && !strings.Contains(line, "log.Fatalf") && insertLine > 1 {
 			break
 		}
 	}

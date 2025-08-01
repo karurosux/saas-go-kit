@@ -11,16 +11,13 @@ import (
 	"gorm.io/gorm"
 )
 
-// PermissionList represents a list of permission tags that can be stored in JSONB
 type PermissionList []string
 
-// Value implements driver.Valuer interface for database storage  
 func (p PermissionList) Value() (driver.Value, error) {
 	return json.Marshal(p)
 }
 
-// Scan implements sql.Scanner interface for database retrieval
-func (p *PermissionList) Scan(value interface{}) error {
+func (p *PermissionList) Scan(value any) error {
 	if value == nil {
 		*p = PermissionList{}
 		return nil
@@ -36,7 +33,6 @@ func (p *PermissionList) Scan(value interface{}) error {
 	return fmt.Errorf("cannot scan %T into PermissionList", value)
 }
 
-// DefaultRole represents a role in the system with tag-based permissions
 type DefaultRole struct {
 	ID          uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Name        string         `json:"name" gorm:"uniqueIndex;not null"`
@@ -48,12 +44,10 @@ type DefaultRole struct {
 	DeletedAt   gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
-// TableName specifies the table name for GORM
 func (DefaultRole) TableName() string {
 	return "roles"
 }
 
-// Implement Role interface
 func (r *DefaultRole) GetID() uuid.UUID { return r.ID }
 func (r *DefaultRole) GetName() string { return r.Name }
 func (r *DefaultRole) GetDescription() string { return r.Description }
@@ -93,7 +87,6 @@ func (r *DefaultRole) HasAllPermissions(permissions []string) bool {
 	return true
 }
 
-// BeforeCreate hook for GORM
 func (r *DefaultRole) BeforeCreate(tx *gorm.DB) error {
 	if r.ID == uuid.Nil {
 		r.ID = uuid.New()

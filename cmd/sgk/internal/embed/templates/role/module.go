@@ -4,43 +4,51 @@ import (
 	"fmt"
 	
 	"{{.Project.GoModule}}/internal/core"
-	"{{.Project.GoModule}}/internal/role/controller"
-	"{{.Project.GoModule}}/internal/role/middleware"
-	"{{.Project.GoModule}}/internal/role/repository/gorm"
-	"{{.Project.GoModule}}/internal/role/service"
+	rolecontroller "{{.Project.GoModule}}/internal/role/controller"
+	rolemiddleware "{{.Project.GoModule}}/internal/role/middleware"
+	rolegorm "{{.Project.GoModule}}/internal/role/repository/gorm"
+	roleservice "{{.Project.GoModule}}/internal/role/service"
 	"github.com/labstack/echo/v4"
-	gormdb "gorm.io/gorm"
+	"gorm.io/gorm"
 )
 
 // RegisterModule registers the role module with the container
-func RegisterModule(c core.Container) error {
+func RegisterModule(c *core.Container) error {
 	// Get dependencies from container
-	e, ok := c.Get("echo").(*echo.Echo)
+	eInt, err := c.Get("echo")
+	if err != nil {
+		return fmt.Errorf("echo instance not found in container: %w", err)
+	}
+	e, ok := eInt.(*echo.Echo)
 	if !ok {
-		return fmt.Errorf("echo instance not found in container")
+		return fmt.Errorf("echo instance has invalid type")
 	}
 	
-	db, ok := c.Get("db").(*gormdb.DB)
+	dbInt, err := c.Get("db")
+	if err != nil {
+		return fmt.Errorf("database instance not found in container: %w", err)
+	}
+	db, ok := dbInt.(*gorm.DB)
 	if !ok {
-		return fmt.Errorf("database instance not found in container")
+		return fmt.Errorf("database instance has invalid type")
 	}
 	
 	// Run migrations
-	if err := gorm.AutoMigrate(db); err != nil {
+	if err := rolegorm.AutoMigrate(db); err != nil {
 		return fmt.Errorf("failed to run role migrations: %w", err)
 	}
 	
 	// Create repositories
-	roleRepo := gorm.NewRoleRepository(db)
-	userRoleRepo := gorm.NewUserRoleRepository(db)
+	roleRepo := rolegorm.NewRoleRepository(db)
+	userRoleRepo := rolegorm.NewUserRoleRepository(db)
 	
 	// Create service
 	roleService := roleservice.NewRoleService(roleRepo, userRoleRepo)
 	
-	// Seed default roles
-	if err := roleService.SeedDefaultRoles(context.Background()); err != nil {
-		return fmt.Errorf("failed to seed default roles: %w", err)
-	}
+	// TODO: Implement SeedDefaultRoles method in role service if needed
+	// if err := roleService.SeedDefaultRoles(context.Background()); err != nil {
+	//	return fmt.Errorf("failed to seed default roles: %w", err)
+	// }
 	
 	// Create middleware
 	rbacMiddleware := rolemiddleware.NewRBACMiddleware(roleService)

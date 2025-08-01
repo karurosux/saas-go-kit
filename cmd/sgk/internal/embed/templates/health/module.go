@@ -7,22 +7,25 @@ import (
 	"time"
 	
 	"{{.Project.GoModule}}/internal/core"
-	"{{.Project.GoModule}}/internal/health/checkers"
-	"{{.Project.GoModule}}/internal/health/constants"
-	"{{.Project.GoModule}}/internal/health/controller"
-	"{{.Project.GoModule}}/internal/health/interface"
-	"{{.Project.GoModule}}/internal/health/service"
+	healthcheckers "{{.Project.GoModule}}/internal/health/checkers"
+	healthconstants "{{.Project.GoModule}}/internal/health/constants"
+	healthcontroller "{{.Project.GoModule}}/internal/health/controller"
+	healthservice "{{.Project.GoModule}}/internal/health/service"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
 // RegisterModule registers the health module with the container
-func RegisterModule(c core.Container) error {
+func RegisterModule(c *core.Container) error {
 	// Get dependencies from container
-	e, ok := c.Get("echo").(*echo.Echo)
+	eInt, err := c.Get("echo")
+	if err != nil {
+		return fmt.Errorf("echo instance not found in container: %w", err)
+	}
+	e, ok := eInt.(*echo.Echo)
 	if !ok {
-		return fmt.Errorf("echo instance not found in container")
+		return fmt.Errorf("echo instance has invalid type")
 	}
 	
 	// Get version from environment or default
@@ -35,15 +38,19 @@ func RegisterModule(c core.Container) error {
 	healthService := healthservice.NewHealthService(version)
 	
 	// Register database checker if available
-	if db, ok := c.Get("db").(*gorm.DB); ok {
-		dbChecker := healthcheckers.NewDatabaseChecker(db, true) // Critical
-		healthService.RegisterChecker(dbChecker)
+	if dbInt, err := c.Get("db"); err == nil {
+		if db, ok := dbInt.(*gorm.DB); ok {
+			dbChecker := healthcheckers.NewDatabaseChecker(db, true) // Critical
+			healthService.RegisterChecker(dbChecker)
+		}
 	}
 	
 	// Register Redis checker if available
-	if redisClient, ok := c.Get("redis").(*redis.Client); ok {
-		redisChecker := healthcheckers.NewRedisChecker(redisClient, false) // Non-critical
-		healthService.RegisterChecker(redisChecker)
+	if redisInt, err := c.Get("redis"); err == nil {
+		if redisClient, ok := redisInt.(*redis.Client); ok {
+			redisChecker := healthcheckers.NewRedisChecker(redisClient, false) // Non-critical
+			healthService.RegisterChecker(redisChecker)
+		}
 	}
 	
 	// Register disk space checker
@@ -87,10 +94,10 @@ func RegisterModule(c core.Container) error {
 	// Register health service in container for other modules to use
 	c.Set("health.service", healthService)
 	
-	// Register shutdown handler to stop periodic checks
-	c.OnShutdown(func() {
-		healthService.StopPeriodicChecks()
-	})
+	// TODO: Register shutdown handler to stop periodic checks
+	// c.OnShutdown(func() {
+	//	healthService.StopPeriodicChecks()
+	// })
 	
 	return nil
 }

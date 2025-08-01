@@ -21,57 +21,46 @@ type Invoice struct {
 	CreatedAt        time.Time  `json:"created_at"`
 }
 
-// GetID returns the invoice ID
 func (i *Invoice) GetID() string {
 	return i.ID
 }
 
-// GetAccountID returns the account ID
 func (i *Invoice) GetAccountID() uuid.UUID {
 	return i.AccountID
 }
 
-// GetSubscriptionID returns the subscription ID
 func (i *Invoice) GetSubscriptionID() uuid.UUID {
 	return i.SubscriptionID
 }
 
-// GetAmount returns the amount in cents
 func (i *Invoice) GetAmount() int64 {
 	return i.Amount
 }
 
-// GetCurrency returns the currency
 func (i *Invoice) GetCurrency() string {
 	return i.Currency
 }
 
-// GetStatus returns the invoice status
 func (i *Invoice) GetStatus() string {
 	return i.Status
 }
 
-// GetPaidAt returns when invoice was paid
 func (i *Invoice) GetPaidAt() *time.Time {
 	return i.PaidAt
 }
 
-// GetDueDate returns the due date
 func (i *Invoice) GetDueDate() time.Time {
 	return i.DueDate
 }
 
-// GetStripeInvoiceID returns the Stripe invoice ID
 func (i *Invoice) GetStripeInvoiceID() string {
 	return i.StripeInvoiceID
 }
 
-// GetPDF returns the PDF URL
 func (i *Invoice) GetPDF() string {
 	return i.PDF
 }
 
-// GetCreatedAt returns creation time
 func (i *Invoice) GetCreatedAt() time.Time {
 	return i.CreatedAt
 }

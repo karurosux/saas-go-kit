@@ -1,7 +1,7 @@
 package gorm
 
 import (
-	"{{.Project.GoModule}}/internal/auth/model"
+	authmodel "{{.Project.GoModule}}/internal/auth/model"
 	"gorm.io/gorm"
 )
 

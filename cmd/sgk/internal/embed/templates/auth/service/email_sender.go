@@ -3,7 +3,7 @@ package authservice
 import (
 	"fmt"
 	
-	"{{.Project.GoModule}}/internal/auth/interface"
+	authinterface "{{.Project.GoModule}}/internal/auth/interface"
 )
 
 // MockEmailSender implements email sending (mock implementation)

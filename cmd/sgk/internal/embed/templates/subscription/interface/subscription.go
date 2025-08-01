@@ -43,7 +43,7 @@ type SubscriptionPlan interface {
 	GetType() PlanType
 	GetPriceMonthly() int64 // in cents
 	GetPriceYearly() int64  // in cents
-	GetFeatures() map[string]interface{}
+	GetFeatures() map[string]any
 	GetLimits() map[string]int64
 	GetStripeProductID() string
 	GetStripePriceMonthlyID() string
@@ -84,7 +84,7 @@ type Usage interface {
 	GetResource() string
 	GetQuantity() int64
 	GetPeriod() time.Time
-	GetMetadata() map[string]interface{}
+	GetMetadata() map[string]any
 	GetCreatedAt() time.Time
 	IncrementQuantity(amount int64)
 }
@@ -146,7 +146,7 @@ type PaymentProvider interface {
 	
 	// Subscription management
 	CreateSubscription(ctx context.Context, req CreateSubscriptionRequest) (*ProviderSubscription, error)
-	UpdateSubscription(ctx context.Context, subscriptionID string, req UpdateSubscriptionRequest) (*ProviderSubscription, error)
+	UpdateSubscription(ctx context.Context, subscriptionID string, req ProviderUpdateSubscriptionRequest) (*ProviderSubscription, error)
 	CancelSubscription(ctx context.Context, subscriptionID string, immediately bool) error
 	ResumeSubscription(ctx context.Context, subscriptionID string) error
 	
@@ -173,9 +173,9 @@ type SubscriptionService interface {
 	GetPlan(ctx context.Context, planID uuid.UUID) (SubscriptionPlan, error)
 	
 	// Subscription management
-	CreateSubscription(ctx context.Context, req CreateSubscriptionRequest) (Subscription, error)
+	CreateSubscription(ctx context.Context, req ServiceCreateSubscriptionRequest) (Subscription, error)
 	GetSubscription(ctx context.Context, accountID uuid.UUID) (Subscription, error)
-	UpdateSubscription(ctx context.Context, accountID uuid.UUID, req UpdateSubscriptionRequest) (Subscription, error)
+	UpdateSubscription(ctx context.Context, accountID uuid.UUID, req ServiceUpdateSubscriptionRequest) (Subscription, error)
 	CancelSubscription(ctx context.Context, accountID uuid.UUID, immediately bool) error
 	ReactivateSubscription(ctx context.Context, accountID uuid.UUID) error
 	
@@ -196,6 +196,7 @@ type SubscriptionService interface {
 
 // Request/Response types
 
+// CreateSubscriptionRequest is used by the PaymentProvider interface
 type CreateSubscriptionRequest struct {
 	CustomerID      string
 	PriceID         string
@@ -204,7 +205,23 @@ type CreateSubscriptionRequest struct {
 	PaymentMethodID string
 }
 
-type UpdateSubscriptionRequest struct {
+// ServiceCreateSubscriptionRequest is used by the SubscriptionService
+type ServiceCreateSubscriptionRequest struct {
+	AccountID      uuid.UUID
+	PlanID         uuid.UUID
+	CustomerEmail  string
+	BillingPeriod  BillingPeriod
+	PaymentMethodID string
+}
+
+// ServiceUpdateSubscriptionRequest is used by the SubscriptionService interface
+type ServiceUpdateSubscriptionRequest struct {
+	NewPlanID     uuid.UUID
+	BillingPeriod BillingPeriod
+}
+
+// ProviderUpdateSubscriptionRequest is used by the PaymentProvider interface
+type ProviderUpdateSubscriptionRequest struct {
 	PriceID  string
 	Quantity int64
 	Metadata map[string]string

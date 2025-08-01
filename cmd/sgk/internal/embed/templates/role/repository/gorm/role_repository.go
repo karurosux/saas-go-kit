@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"{{.Project.GoModule}}/internal/role/constants"
-	"{{.Project.GoModule}}/internal/role/interface"
-	"{{.Project.GoModule}}/internal/role/model"
+	roleconstants "{{.Project.GoModule}}/internal/role/constants"
+	roleinterface "{{.Project.GoModule}}/internal/role/interface"
+	rolemodel "{{.Project.GoModule}}/internal/role/model"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -15,7 +15,6 @@ type RoleRepository struct {
 	db *gorm.DB
 }
 
-// NewRoleRepository creates a new GORM role repository
 func NewRoleRepository(db *gorm.DB) roleinterface.RoleRepository {
 	return &RoleRepository{db: db}
 }
@@ -59,7 +58,6 @@ func (r *RoleRepository) FindAll(ctx context.Context, filters roleinterface.Role
 	var roles []rolemodel.DefaultRole
 	query := r.db.WithContext(ctx)
 
-	// Apply filters
 	if filters.Name != "" {
 		query = query.Where("name ILIKE ?", "%"+filters.Name+"%")
 	}
@@ -72,7 +70,6 @@ func (r *RoleRepository) FindAll(ctx context.Context, filters roleinterface.Role
 		query = query.Where("permissions @> ?", `["`+filters.HasPermission+`"]`)
 	}
 
-	// Apply pagination
 	if filters.Limit > 0 {
 		query = query.Limit(filters.Limit)
 	}
@@ -85,7 +82,6 @@ func (r *RoleRepository) FindAll(ctx context.Context, filters roleinterface.Role
 		return nil, err
 	}
 
-	// Convert to interface slice
 	result := make([]roleinterface.Role, len(roles))
 	for i := range roles {
 		result[i] = &roles[i]
@@ -120,7 +116,6 @@ func (r *RoleRepository) FindSystemRoles(ctx context.Context) ([]roleinterface.R
 		return nil, err
 	}
 
-	// Convert to interface slice
 	result := make([]roleinterface.Role, len(roles))
 	for i := range roles {
 		result[i] = &roles[i]

@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"{{.Project.GoModule}}/internal/role/constants"
-	"{{.Project.GoModule}}/internal/role/interface"
-	"{{.Project.GoModule}}/internal/role/model"
+	roleconstants "{{.Project.GoModule}}/internal/role/constants"
+	roleinterface "{{.Project.GoModule}}/internal/role/interface"
+	rolemodel "{{.Project.GoModule}}/internal/role/model"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -16,7 +16,6 @@ type UserRoleRepository struct {
 	db *gorm.DB
 }
 
-// NewUserRoleRepository creates a new GORM user role repository
 func NewUserRoleRepository(db *gorm.DB) roleinterface.UserRoleRepository {
 	return &UserRoleRepository{db: db}
 }
@@ -98,7 +97,6 @@ func (r *UserRoleRepository) FindActiveUserRoles(ctx context.Context, userID uui
 		Preload("Role").
 		Where("user_id = ?", userID)
 	
-	// Only active roles (not expired)
 	query = query.Where("expires_at IS NULL OR expires_at > ?", time.Now())
 	
 	if err := query.Find(&userRoles).Error; err != nil {

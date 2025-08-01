@@ -1,13 +1,12 @@
 package rolemiddleware
 
 import (
-	"{{.Project.GoModule}}/internal/role/constants"
-	"{{.Project.GoModule}}/internal/role/interface"
+	roleconstants "{{.Project.GoModule}}/internal/role/constants"
+	roleinterface "{{.Project.GoModule}}/internal/role/interface"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-// GetUserPermissionsFromContext retrieves user permissions from context
 func GetUserPermissionsFromContext(c echo.Context) []string {
 	if permissions := c.Get(roleconstants.ContextKeyUserPermissions); permissions != nil {
 		if value, ok := permissions.([]string); ok {
@@ -17,7 +16,6 @@ func GetUserPermissionsFromContext(c echo.Context) []string {
 	return []string{}
 }
 
-// GetUserRolesFromContext retrieves user roles from context
 func GetUserRolesFromContext(c echo.Context) []roleinterface.Role {
 	if roles := c.Get(roleconstants.ContextKeyUserRoles); roles != nil {
 		if value, ok := roles.([]roleinterface.Role); ok {
@@ -27,7 +25,6 @@ func GetUserRolesFromContext(c echo.Context) []roleinterface.Role {
 	return []roleinterface.Role{}
 }
 
-// HasPermissionInContext checks if user has a specific permission from context
 func HasPermissionInContext(c echo.Context, permission string) bool {
 	key := roleconstants.ContextKeyHasPermissionPrefix + permission
 	if hasPermission := c.Get(key); hasPermission != nil {
@@ -38,12 +35,10 @@ func HasPermissionInContext(c echo.Context, permission string) bool {
 	return false
 }
 
-// GetUserIDFromContext gets user ID from context (helper for handlers)
 func GetUserIDFromContext(c echo.Context) (uuid.UUID, error) {
 	return DefaultUserIDExtractor(c)
 }
 
-// UserHasRole checks if user has a specific role from context
 func UserHasRole(c echo.Context, roleName string) bool {
 	roles := GetUserRolesFromContext(c)
 	for _, role := range roles {
@@ -54,7 +49,6 @@ func UserHasRole(c echo.Context, roleName string) bool {
 	return false
 }
 
-// UserHasAnyRole checks if user has any of the specified roles from context
 func UserHasAnyRole(c echo.Context, roleNames ...string) bool {
 	roles := GetUserRolesFromContext(c)
 	roleMap := make(map[string]bool)
@@ -70,7 +64,6 @@ func UserHasAnyRole(c echo.Context, roleNames ...string) bool {
 	return false
 }
 
-// UserHasPermission checks if user has a specific permission from context
 func UserHasPermission(c echo.Context, permission string) bool {
 	permissions := GetUserPermissionsFromContext(c)
 	for _, p := range permissions {
@@ -88,7 +81,6 @@ func UserHasPermission(c echo.Context, permission string) bool {
 	return false
 }
 
-// UserHasAnyPermission checks if user has any of the specified permissions from context
 func UserHasAnyPermission(c echo.Context, permissions ...string) bool {
 	for _, permission := range permissions {
 		if UserHasPermission(c, permission) {
@@ -98,7 +90,6 @@ func UserHasAnyPermission(c echo.Context, permissions ...string) bool {
 	return false
 }
 
-// UserHasAllPermissions checks if user has all of the specified permissions from context
 func UserHasAllPermissions(c echo.Context, permissions ...string) bool {
 	for _, permission := range permissions {
 		if !UserHasPermission(c, permission) {

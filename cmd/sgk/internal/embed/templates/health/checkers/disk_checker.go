@@ -6,12 +6,11 @@ import (
 	"syscall"
 	"time"
 	
-	"{{.Project.GoModule}}/internal/health/constants"
-	"{{.Project.GoModule}}/internal/health/interface"
-	"{{.Project.GoModule}}/internal/health/model"
+	healthconstants "{{.Project.GoModule}}/internal/health/constants"
+	healthinterface "{{.Project.GoModule}}/internal/health/interface"
+	healthmodel "{{.Project.GoModule}}/internal/health/model"
 )
 
-// DiskSpaceChecker checks available disk space
 type DiskSpaceChecker struct {
 	name      string
 	path      string
@@ -19,7 +18,6 @@ type DiskSpaceChecker struct {
 	critical  bool
 }
 
-// NewDiskSpaceChecker creates a new disk space checker
 func NewDiskSpaceChecker(path string, threshold float64, critical bool) healthinterface.DiskSpaceChecker {
 	if threshold <= 0 || threshold > 100 {
 		threshold = healthconstants.DefaultDiskSpaceThreshold
@@ -33,35 +31,30 @@ func NewDiskSpaceChecker(path string, threshold float64, critical bool) healthin
 	}
 }
 
-// Name returns the checker name
 func (c *DiskSpaceChecker) Name() string {
 	return c.name
 }
 
-// Critical returns if this check is critical
 func (c *DiskSpaceChecker) Critical() bool {
 	return c.critical
 }
 
-// SetPath sets the path to check
 func (c *DiskSpaceChecker) SetPath(path string) {
 	c.path = path
 }
 
-// SetThreshold sets the threshold percentage
 func (c *DiskSpaceChecker) SetThreshold(percentage float64) {
 	if percentage > 0 && percentage <= 100 {
 		c.threshold = percentage
 	}
 }
 
-// Check performs the disk space health check
 func (c *DiskSpaceChecker) Check(ctx context.Context) healthinterface.Check {
 	start := time.Now()
 	check := &healthmodel.Check{
 		Name:        c.name,
 		LastChecked: time.Now(),
-		Metadata:    make(map[string]interface{}),
+		Metadata:    make(map[string]any),
 	}
 	
 	var stat syscall.Statfs_t
@@ -72,13 +65,11 @@ func (c *DiskSpaceChecker) Check(ctx context.Context) healthinterface.Check {
 		return check
 	}
 	
-	// Calculate disk usage
 	total := stat.Blocks * uint64(stat.Bsize)
 	free := stat.Bavail * uint64(stat.Bsize)
 	used := total - free
 	usedPercent := float64(used) / float64(total) * 100
 	
-	// Store metadata
 	check.Metadata["path"] = c.path
 	check.Metadata["total_bytes"] = total
 	check.Metadata["used_bytes"] = used
@@ -86,12 +77,10 @@ func (c *DiskSpaceChecker) Check(ctx context.Context) healthinterface.Check {
 	check.Metadata["used_percent"] = fmt.Sprintf("%.2f", usedPercent)
 	check.Metadata["threshold_percent"] = c.threshold
 	
-	// Human-readable sizes
 	check.Metadata["total_human"] = humanizeBytes(total)
 	check.Metadata["used_human"] = humanizeBytes(used)
 	check.Metadata["free_human"] = humanizeBytes(free)
 	
-	// Check against threshold
 	if usedPercent >= c.threshold {
 		check.Status = healthinterface.StatusDown
 		check.Message = fmt.Sprintf("Disk usage %.2f%% exceeds threshold %.2f%%", usedPercent, c.threshold)
@@ -107,7 +96,6 @@ func (c *DiskSpaceChecker) Check(ctx context.Context) healthinterface.Check {
 	return check
 }
 
-// humanizeBytes converts bytes to human-readable format
 func humanizeBytes(bytes uint64) string {
 	const unit = 1024
 	if bytes < unit {

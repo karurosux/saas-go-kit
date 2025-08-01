@@ -3,16 +3,14 @@ package healthservice
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 	
-	"{{.Project.GoModule}}/internal/health/constants"
-	"{{.Project.GoModule}}/internal/health/interface"
-	"{{.Project.GoModule}}/internal/health/model"
+	healthconstants "{{.Project.GoModule}}/internal/health/constants"
+	healthinterface "{{.Project.GoModule}}/internal/health/interface"
+	healthmodel "{{.Project.GoModule}}/internal/health/model"
 )
 
-// HealthService implements the health service
 type HealthService struct {
 	checkers       map[string]healthinterface.Checker
 	lastReport     healthinterface.Report
@@ -22,7 +20,6 @@ type HealthService struct {
 	periodicActive bool
 }
 
-// NewHealthService creates a new health service
 func NewHealthService(version string) healthinterface.HealthService {
 	return &HealthService{
 		checkers: make(map[string]healthinterface.Checker),
@@ -31,21 +28,18 @@ func NewHealthService(version string) healthinterface.HealthService {
 	}
 }
 
-// RegisterChecker registers a health checker
 func (s *HealthService) RegisterChecker(checker healthinterface.Checker) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.checkers[checker.Name()] = checker
 }
 
-// UnregisterChecker removes a health checker
 func (s *HealthService) UnregisterChecker(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	delete(s.checkers, name)
 }
 
-// Check performs a single health check by name
 func (s *HealthService) Check(ctx context.Context, name string) (healthinterface.Check, error) {
 	s.mu.RLock()
 	checker, exists := s.checkers[name]
@@ -55,11 +49,9 @@ func (s *HealthService) Check(ctx context.Context, name string) (healthinterface
 		return nil, errors.New(healthconstants.ErrCheckerNotFound)
 	}
 	
-	// Create a timeout context
 	checkCtx, cancel := context.WithTimeout(ctx, healthconstants.DefaultCheckTimeout)
 	defer cancel()
 	
-	// Run check
 	checkChan := make(chan healthinterface.Check, 1)
 	go func() {
 		checkChan <- checker.Check(checkCtx)
@@ -79,7 +71,6 @@ func (s *HealthService) Check(ctx context.Context, name string) (healthinterface
 	}
 }
 
-// CheckAll performs all registered health checks
 func (s *HealthService) CheckAll(ctx context.Context) healthinterface.Report {
 	s.mu.RLock()
 	checkersCopy := make(map[string]healthinterface.Checker, len(s.checkers))
@@ -94,7 +85,6 @@ func (s *HealthService) CheckAll(ctx context.Context) healthinterface.Report {
 		check healthinterface.Check
 	}, len(checkersCopy))
 	
-	// Run all checks concurrently
 	var wg sync.WaitGroup
 	for name, checker := range checkersCopy {
 		wg.Add(1)
@@ -107,7 +97,6 @@ func (s *HealthService) CheckAll(ctx context.Context) healthinterface.Report {
 			start := time.Now()
 			checkResult := c.Check(checkCtx)
 			
-			// Ensure duration is set
 			if check, ok := checkResult.(*healthmodel.Check); ok {
 				check.Duration = time.Since(start)
 				check.LastChecked = time.Now()
@@ -120,13 +109,11 @@ func (s *HealthService) CheckAll(ctx context.Context) healthinterface.Report {
 		}(name, checker)
 	}
 	
-	// Wait for all checks to complete
 	go func() {
 		wg.Wait()
 		close(checksChan)
 	}()
 	
-	// Collect results
 	healthyCount := 0
 	overallStatus := healthinterface.StatusOK
 	hasCriticalFailure := false
@@ -137,7 +124,6 @@ func (s *HealthService) CheckAll(ctx context.Context) healthinterface.Report {
 		if result.check.GetStatus() == healthinterface.StatusOK {
 			healthyCount++
 		} else {
-			// Check if this is a critical failure
 			if checker, ok := checkersCopy[result.name]; ok && checker.Critical() {
 				hasCriticalFailure = true
 				if result.check.GetStatus() == healthinterface.StatusDown {
@@ -158,12 +144,11 @@ func (s *HealthService) CheckAll(ctx context.Context) healthinterface.Report {
 		Checks:        checks,
 		TotalChecks:   len(checks),
 		HealthyChecks: healthyCount,
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"uptime": time.Since(getStartTime()).Seconds(),
 		},
 	}
 	
-	// Store last report
 	s.mu.Lock()
 	s.lastReport = report
 	s.mu.Unlock()
@@ -171,13 +156,11 @@ func (s *HealthService) CheckAll(ctx context.Context) healthinterface.Report {
 	return report
 }
 
-// GetReport returns the last health report
 func (s *HealthService) GetReport() healthinterface.Report {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	
 	if s.lastReport == nil {
-		// Return empty report
 		return &healthmodel.Report{
 			Status:    healthinterface.StatusOK,
 			Version:   s.version,
@@ -189,13 +172,11 @@ func (s *HealthService) GetReport() healthinterface.Report {
 	return s.lastReport
 }
 
-// IsHealthy returns true if all critical checks are passing
 func (s *HealthService) IsHealthy() bool {
 	report := s.GetReport()
 	return report.GetStatus() == healthinterface.StatusOK
 }
 
-// StartPeriodicChecks starts periodic health checks
 func (s *HealthService) StartPeriodicChecks(ctx context.Context, interval time.Duration) {
 	s.mu.Lock()
 	if s.periodicActive {
@@ -207,7 +188,6 @@ func (s *HealthService) StartPeriodicChecks(ctx context.Context, interval time.D
 	
 	ticker := time.NewTicker(interval)
 	
-	// Run initial check
 	s.CheckAll(ctx)
 	
 	go func() {
@@ -229,7 +209,6 @@ func (s *HealthService) StartPeriodicChecks(ctx context.Context, interval time.D
 	}()
 }
 
-// StopPeriodicChecks stops periodic health checks
 func (s *HealthService) StopPeriodicChecks() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

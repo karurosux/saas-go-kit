@@ -3,73 +3,87 @@ package auth
 import (
 	"fmt"
 	"os"
-	
-	"{{.Project.GoModule}}/internal/auth/controller"
-	"{{.Project.GoModule}}/internal/auth/interface"
-	"{{.Project.GoModule}}/internal/auth/middleware"
-	"{{.Project.GoModule}}/internal/auth/repository/gorm"
-	"{{.Project.GoModule}}/internal/auth/repository/redis"
-	"{{.Project.GoModule}}/internal/auth/service"
+	authredis "{{.Project.GoModule}}/internal/auth/repository/redis"
 	"{{.Project.GoModule}}/internal/core"
+
+	authcontroller "{{.Project.GoModule}}/internal/auth/controller"
+	authinterface "{{.Project.GoModule}}/internal/auth/interface"
+	authmiddleware "{{.Project.GoModule}}/internal/auth/middleware"
+	authgorm "{{.Project.GoModule}}/internal/auth/repository/gorm"
+
+	authservice "{{.Project.GoModule}}/internal/auth/service"
+
 	"github.com/labstack/echo/v4"
-	goredis "github.com/redis/go-redis/v9"
-	gormdb "gorm.io/gorm"
+	"github.com/redis/go-redis/v9"
+	"gorm.io/gorm"
 )
 
 // RegisterModule registers the auth module with the container
-func RegisterModule(c core.Container) error {
+func RegisterModule(c *core.Container) error {
 	// Get dependencies from container
-	e, ok := c.Get("echo").(*echo.Echo)
-	if !ok {
-		return fmt.Errorf("echo instance not found in container")
+	eInt, err := c.Get("echo")
+	if err != nil {
+		return fmt.Errorf("echo instance not found in container: %w", err)
 	}
-	
-	db, ok := c.Get("db").(*gormdb.DB)
+	e, ok := eInt.(*echo.Echo)
 	if !ok {
-		return fmt.Errorf("database instance not found in container")
+		return fmt.Errorf("echo instance has invalid type")
 	}
-	
+
+	dbInt, err := c.Get("db")
+	if err != nil {
+		return fmt.Errorf("database instance not found in container: %w", err)
+	}
+	db, ok := dbInt.(*gorm.DB)
+	if !ok {
+		return fmt.Errorf("database instance has invalid type")
+	}
+
 	// Get Redis client (optional)
 	var sessionStore authinterface.SessionStore
-	if redisClient, ok := c.Get("redis").(*goredis.Client); ok {
-		sessionStore = redis.NewSessionStore(redisClient, "session")
-	} else {
-		// Fallback to in-memory or database session store
-		return fmt.Errorf("redis instance not found in container - required for session storage")
+	redisInt, err := c.Get("redis")
+	if err != nil {
+		return fmt.Errorf("redis instance not found in container - required for session storage: %w", err)
 	}
-	
+	redisClient, ok := redisInt.(*redis.Client)
+	if !ok {
+		return fmt.Errorf("redis instance has invalid type")
+	}
+	sessionStore = authredis.NewSessionStore(redisClient, "session")
+
 	// Run migrations
-	if err := gorm.AutoMigrate(db); err != nil {
+	if err := authgorm.AutoMigrate(db); err != nil {
 		return fmt.Errorf("failed to run auth migrations: %w", err)
 	}
-	
+
 	// Create repositories
-	accountRepo := gorm.NewAccountRepository(db)
-	tokenRepo := gorm.NewTokenRepository(db)
-	
+	accountRepo := authgorm.NewAccountRepository(db)
+	tokenRepo := authgorm.NewTokenRepository(db)
+
 	// Create service dependencies
 	passwordHasher := authservice.NewBcryptPasswordHasher(12)
 	tokenGenerator := authservice.NewTokenGenerator()
-	
+
 	// Get base URL from environment
 	baseURL := os.Getenv("BASE_URL")
 	if baseURL == "" {
 		baseURL = "http://localhost:8080"
 	}
-	
+
 	emailSender := authservice.NewMockEmailSender(baseURL)
 	smsSender := authservice.NewMockSMSSender()
-	
+
 	// Create auth config
 	config := authservice.NewDefaultAuthConfig()
-	
+
 	// Override config from environment
 	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
-		if cfg, ok := config.(*authservice.DefaultAuthConfig); ok {
-			cfg.jwtSecret = jwtSecret
-		}
+		// TODO: Add method to set JWT secret in config
+		// if cfg, ok := config.(*authservice.DefaultAuthConfig); ok {
+		//	cfg.SetJWTSecret(jwtSecret)
+		// }
 	}
-	
+
 	// Create auth service
 	authService := authservice.NewAuthService(
 		accountRepo,
@@ -81,22 +95,23 @@ func RegisterModule(c core.Container) error {
 		smsSender,
 		config,
 	)
-	
+
 	// Create middleware
 	authMiddleware := authmiddleware.NewAuthMiddleware(authService)
-	
+
 	// Create controller
 	authController := authcontroller.NewAuthController(authService)
-	
+
 	// Register routes
 	authController.RegisterRoutes(e, "/auth", authMiddleware)
-	
+
 	// Register components in container for other modules to use
 	c.Set("auth.service", authService)
 	c.Set("auth.middleware", authMiddleware)
 	c.Set("auth.accountRepository", accountRepo)
 	c.Set("auth.tokenRepository", tokenRepo)
 	c.Set("auth.sessionStore", sessionStore)
-	
+
 	return nil
 }
+

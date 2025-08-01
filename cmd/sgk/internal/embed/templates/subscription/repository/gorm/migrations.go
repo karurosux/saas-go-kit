@@ -1,7 +1,7 @@
 package gorm
 
 import (
-	"{{.Project.GoModule}}/internal/subscription/model"
+	subscriptionmodel "{{.Project.GoModule}}/internal/subscription/model"
 	"gorm.io/gorm"
 )
 

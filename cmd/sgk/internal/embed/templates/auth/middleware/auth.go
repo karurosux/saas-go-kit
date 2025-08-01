@@ -1,21 +1,20 @@
 package authmiddleware
 
 import (
+	"fmt"
 	"strings"
 	
-	"{{.Project.GoModule}}/internal/auth/constants"
-	"{{.Project.GoModule}}/internal/auth/interface"
+	authconstants "{{.Project.GoModule}}/internal/auth/constants"
+	authinterface "{{.Project.GoModule}}/internal/auth/interface"
 	"{{.Project.GoModule}}/internal/core"
 	"github.com/labstack/echo/v4"
 )
 
-// AuthMiddleware provides authentication middleware
 type AuthMiddleware struct {
 	authService authinterface.AuthService
 	config      MiddlewareConfig
 }
 
-// MiddlewareConfig configuration for auth middleware
 type MiddlewareConfig struct {
 	Skipper      func(c echo.Context) bool
 	TokenLookup  string // "header:Authorization" or "cookie:token"
@@ -23,7 +22,6 @@ type MiddlewareConfig struct {
 	ErrorHandler func(c echo.Context, err error) error
 }
 
-// DefaultConfig returns default middleware configuration
 func DefaultConfig() MiddlewareConfig {
 	return MiddlewareConfig{
 		TokenLookup:  "header:Authorization",
@@ -32,12 +30,10 @@ func DefaultConfig() MiddlewareConfig {
 	}
 }
 
-// DefaultErrorHandler returns unauthorized error
 func DefaultErrorHandler(c echo.Context, err error) error {
-	return core.Error(c, core.Unauthorized(authconstants.ErrUnauthorized))
+	return core.Unauthorized(c, fmt.Errorf(authconstants.ErrUnauthorized))
 }
 
-// NewAuthMiddleware creates a new auth middleware
 func NewAuthMiddleware(authService authinterface.AuthService, config ...MiddlewareConfig) *AuthMiddleware {
 	cfg := DefaultConfig()
 	if len(config) > 0 {
@@ -61,7 +57,6 @@ func NewAuthMiddleware(authService authinterface.AuthService, config ...Middlewa
 	}
 }
 
-// RequireAuth middleware that requires authentication
 func (m *AuthMiddleware) RequireAuth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -69,19 +64,16 @@ func (m *AuthMiddleware) RequireAuth() echo.MiddlewareFunc {
 				return next(c)
 			}
 			
-			// Extract token
 			token, err := m.extractToken(c)
 			if err != nil {
 				return m.config.ErrorHandler(c, err)
 			}
 			
-			// Validate session
 			account, err := m.authService.ValidateSession(c.Request().Context(), token)
 			if err != nil {
 				return m.config.ErrorHandler(c, err)
 			}
 			
-			// Set context values
 			c.Set(authconstants.ContextKeyUserID, account.GetID())
 			c.Set(authconstants.ContextKeyAccount, account)
 			c.Set(authconstants.ContextKeyIsAuthenticated, true)
@@ -91,7 +83,6 @@ func (m *AuthMiddleware) RequireAuth() echo.MiddlewareFunc {
 	}
 }
 
-// OptionalAuth middleware that allows but doesn't require authentication
 func (m *AuthMiddleware) OptionalAuth() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
@@ -99,7 +90,6 @@ func (m *AuthMiddleware) OptionalAuth() echo.MiddlewareFunc {
 				return next(c)
 			}
 			
-			// Extract token
 			token, err := m.extractToken(c)
 			if err != nil || token == "" {
 				// No token is OK for optional auth
@@ -107,7 +97,6 @@ func (m *AuthMiddleware) OptionalAuth() echo.MiddlewareFunc {
 				return next(c)
 			}
 			
-			// Validate session
 			account, err := m.authService.ValidateSession(c.Request().Context(), token)
 			if err != nil {
 				// Invalid token is OK for optional auth
@@ -115,7 +104,6 @@ func (m *AuthMiddleware) OptionalAuth() echo.MiddlewareFunc {
 				return next(c)
 			}
 			
-			// Set context values
 			c.Set(authconstants.ContextKeyUserID, account.GetID())
 			c.Set(authconstants.ContextKeyAccount, account)
 			c.Set(authconstants.ContextKeyIsAuthenticated, true)
@@ -139,7 +127,6 @@ func (m *AuthMiddleware) extractToken(c echo.Context) (string, error) {
 			return "", echo.NewHTTPError(401, "missing authorization header")
 		}
 		
-		// Remove prefix if configured
 		if m.config.TokenPrefix != "" {
 			if !strings.HasPrefix(header, m.config.TokenPrefix) {
 				return "", echo.NewHTTPError(401, "invalid authorization header format")

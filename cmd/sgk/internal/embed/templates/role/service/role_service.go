@@ -6,19 +6,17 @@ import (
 	"fmt"
 	"time"
 
-	"{{.Project.GoModule}}/internal/role/constants"
-	"{{.Project.GoModule}}/internal/role/interface"
-	"{{.Project.GoModule}}/internal/role/model"
+	roleconstants "{{.Project.GoModule}}/internal/role/constants"
+	roleinterface "{{.Project.GoModule}}/internal/role/interface"
+	rolemodel "{{.Project.GoModule}}/internal/role/model"
 	"github.com/google/uuid"
 )
 
-// RoleService implements the role management business logic
 type RoleService struct {
 	roleRepo     roleinterface.RoleRepository
 	userRoleRepo roleinterface.UserRoleRepository
 }
 
-// NewRoleService creates a new role service
 func NewRoleService(
 	roleRepo roleinterface.RoleRepository,
 	userRoleRepo roleinterface.UserRoleRepository,
@@ -29,10 +27,8 @@ func NewRoleService(
 	}
 }
 
-// Role management
 
 func (s *RoleService) CreateRole(ctx context.Context, name, description string, permissions []string, isSystem bool) (roleinterface.Role, error) {
-	// Check if role already exists
 	existing, err := s.roleRepo.FindByName(ctx, name)
 	if err == nil && existing != nil {
 		return nil, errors.New(roleconstants.ErrRoleAlreadyExists)
@@ -71,12 +67,10 @@ func (s *RoleService) UpdateRole(ctx context.Context, id uuid.UUID, updates role
 		return nil, err
 	}
 
-	// Don't allow updating system roles
 	if role.IsSystemRole() {
 		return nil, errors.New("cannot update system role")
 	}
 
-	// Apply updates
 	defaultRole := role.(*rolemodel.DefaultRole)
 	if updates.Name != nil {
 		defaultRole.Name = *updates.Name
@@ -101,12 +95,10 @@ func (s *RoleService) DeleteRole(ctx context.Context, id uuid.UUID) error {
 		return err
 	}
 
-	// Don't allow deleting system roles
 	if role.IsSystemRole() {
 		return errors.New(roleconstants.ErrSystemRoleDelete)
 	}
 
-	// Check if any users have this role
 	userRoles, err := s.userRoleRepo.FindByRoleID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to check role usage: %w", err)
@@ -118,16 +110,13 @@ func (s *RoleService) DeleteRole(ctx context.Context, id uuid.UUID) error {
 	return s.roleRepo.Delete(ctx, id)
 }
 
-// User role assignment
 
 func (s *RoleService) AssignRoleToUser(ctx context.Context, userID, roleID, assignedBy uuid.UUID, expiresAt *time.Time) error {
-	// Check if role exists
 	role, err := s.roleRepo.FindByID(ctx, roleID)
 	if err != nil {
 		return err
 	}
 
-	// Check if already assigned
 	existing, _ := s.userRoleRepo.FindUserRole(ctx, userID, roleID)
 	if existing != nil {
 		return errors.New(roleconstants.ErrRoleAlreadyAssigned)
@@ -168,7 +157,6 @@ func (s *RoleService) GetUsersWithRole(ctx context.Context, roleID uuid.UUID) ([
 	return s.userRoleRepo.FindByRoleID(ctx, roleID)
 }
 
-// Permission checking
 
 func (s *RoleService) UserHasPermission(ctx context.Context, userID uuid.UUID, permission string) (bool, error) {
 	roles, err := s.GetUserRoles(ctx, userID)
@@ -206,7 +194,6 @@ func (s *RoleService) UserHasAllPermissions(ctx context.Context, userID uuid.UUI
 		return false, err
 	}
 
-	// Collect all permissions from all roles
 	allPerms := make(map[string]bool)
 	for _, role := range roles {
 		for _, perm := range role.GetPermissions() {
@@ -214,7 +201,6 @@ func (s *RoleService) UserHasAllPermissions(ctx context.Context, userID uuid.UUI
 		}
 	}
 
-	// Check if all required permissions are present
 	for _, perm := range permissions {
 		found := false
 		for _, role := range roles {
@@ -237,7 +223,6 @@ func (s *RoleService) GetUserPermissions(ctx context.Context, userID uuid.UUID) 
 		return nil, err
 	}
 
-	// Collect unique permissions
 	permMap := make(map[string]bool)
 	for _, role := range roles {
 		for _, perm := range role.GetPermissions() {
@@ -245,7 +230,6 @@ func (s *RoleService) GetUserPermissions(ctx context.Context, userID uuid.UUID) 
 		}
 	}
 
-	// Convert to slice
 	permissions := make([]string, 0, len(permMap))
 	for perm := range permMap {
 		permissions = append(permissions, perm)
@@ -254,7 +238,6 @@ func (s *RoleService) GetUserPermissions(ctx context.Context, userID uuid.UUID) 
 	return permissions, nil
 }
 
-// System roles
 
 func (s *RoleService) CreateSystemRoles(ctx context.Context) error {
 	systemRoles := []struct {
@@ -289,7 +272,6 @@ func (s *RoleService) CreateSystemRoles(ctx context.Context) error {
 	}
 
 	for _, sr := range systemRoles {
-		// Check if already exists
 		existing, _ := s.roleRepo.FindByName(ctx, sr.name)
 		if existing != nil {
 			continue
@@ -308,7 +290,6 @@ func (s *RoleService) GetSystemRoles(ctx context.Context) ([]roleinterface.Role,
 	return s.roleRepo.FindSystemRoles(ctx)
 }
 
-// Maintenance
 
 func (s *RoleService) CleanupExpiredRoles(ctx context.Context) error {
 	return s.userRoleRepo.CleanupExpiredRoles(ctx)

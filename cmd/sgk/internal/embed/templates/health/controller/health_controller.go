@@ -1,10 +1,11 @@
 package healthcontroller
 
 import (
+	"fmt"
 	"net/http"
 	
 	"{{.Project.GoModule}}/internal/core"
-	"{{.Project.GoModule}}/internal/health/interface"
+	healthinterface "{{.Project.GoModule}}/internal/health/interface"
 	"github.com/labstack/echo/v4"
 )
 
@@ -38,17 +39,17 @@ func (hc *HealthController) RegisterRoutes(e *echo.Echo, basePath string) {
 // @Tags health
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Success 503 {object} map[string]interface{}
+// @Success 200 {object} map[string]any
+// @Success 503 {object} map[string]any
 // @Router /health [get]
 func (hc *HealthController) GetHealth(c echo.Context) error {
 	if hc.service.IsHealthy() {
-		return c.JSON(http.StatusOK, map[string]interface{}{
+		return c.JSON(http.StatusOK, map[string]any{
 			"status": "healthy",
 		})
 	}
 	
-	return c.JSON(http.StatusServiceUnavailable, map[string]interface{}{
+	return c.JSON(http.StatusServiceUnavailable, map[string]any{
 		"status": "unhealthy",
 	})
 }
@@ -59,11 +60,11 @@ func (hc *HealthController) GetHealth(c echo.Context) error {
 // @Tags health
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} map[string]any
 // @Router /health/live [get]
 func (hc *HealthController) GetLiveness(c echo.Context) error {
 	// Liveness check - always return OK unless the service is completely broken
-	return c.JSON(http.StatusOK, map[string]interface{}{
+	return c.JSON(http.StatusOK, map[string]any{
 		"status": "alive",
 	})
 }
@@ -74,14 +75,14 @@ func (hc *HealthController) GetLiveness(c echo.Context) error {
 // @Tags health
 // @Accept json
 // @Produce json
-// @Success 200 {object} map[string]interface{}
-// @Success 503 {object} map[string]interface{}
+// @Success 200 {object} map[string]any
+// @Success 503 {object} map[string]any
 // @Router /health/ready [get]
 func (hc *HealthController) GetReadiness(c echo.Context) error {
 	// Run all health checks to determine readiness
 	report := hc.service.CheckAll(c.Request().Context())
 	
-	response := map[string]interface{}{
+	response := map[string]any{
 		"status":         report.GetStatus(),
 		"total_checks":   report.GetTotalChecks(),
 		"healthy_checks": report.GetHealthyChecks(),
@@ -134,7 +135,7 @@ func (hc *HealthController) GetSpecificCheck(c echo.Context) error {
 	
 	check, err := hc.service.Check(c.Request().Context(), name)
 	if err != nil {
-		return core.Error(c, core.NotFound("Health check not found"))
+		return core.NotFound(c, fmt.Errorf("Health check not found"))
 	}
 	
 	// Determine HTTP status based on check status

@@ -21,7 +21,7 @@ type Check interface {
 	GetMessage() string
 	GetDuration() time.Duration
 	GetLastChecked() time.Time
-	GetMetadata() map[string]interface{}
+	GetMetadata() map[string]any
 }
 
 // Report represents the overall health report
@@ -32,7 +32,7 @@ type Report interface {
 	GetChecks() map[string]Check
 	GetTotalChecks() int
 	GetHealthyChecks() int
-	GetMetadata() map[string]interface{}
+	GetMetadata() map[string]any
 }
 
 // Checker interface for implementing health checks

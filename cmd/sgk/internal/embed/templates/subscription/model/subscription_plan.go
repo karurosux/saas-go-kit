@@ -3,7 +3,7 @@ package subscriptionmodel
 import (
 	"time"
 	
-	"{{.Project.GoModule}}/internal/subscription/interface"
+	subscriptioninterface "{{.Project.GoModule}}/internal/subscription/interface"
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
 )
@@ -26,41 +26,34 @@ type SubscriptionPlan struct {
 	UpdatedAt            time.Time                         `json:"updated_at"`
 }
 
-// GetID returns the plan ID
 func (p *SubscriptionPlan) GetID() uuid.UUID {
 	return p.ID
 }
 
-// GetName returns the plan name
 func (p *SubscriptionPlan) GetName() string {
 	return p.Name
 }
 
-// GetType returns the plan type
 func (p *SubscriptionPlan) GetType() subscriptioninterface.PlanType {
 	return p.Type
 }
 
-// GetPriceMonthly returns the monthly price in cents
 func (p *SubscriptionPlan) GetPriceMonthly() int64 {
 	return p.PriceMonthly
 }
 
-// GetPriceYearly returns the yearly price in cents
 func (p *SubscriptionPlan) GetPriceYearly() int64 {
 	return p.PriceYearly
 }
 
-// GetFeatures returns the plan features
-func (p *SubscriptionPlan) GetFeatures() map[string]interface{} {
-	var features map[string]interface{}
+func (p *SubscriptionPlan) GetFeatures() map[string]any {
+	var features map[string]any
 	if p.Features != nil {
 		p.Features.Scan(&features)
 	}
 	return features
 }
 
-// GetLimits returns the plan limits
 func (p *SubscriptionPlan) GetLimits() map[string]int64 {
 	var limits map[string]int64
 	if p.Limits != nil {
@@ -69,37 +62,30 @@ func (p *SubscriptionPlan) GetLimits() map[string]int64 {
 	return limits
 }
 
-// GetStripeProductID returns the Stripe product ID
 func (p *SubscriptionPlan) GetStripeProductID() string {
 	return p.StripeProductID
 }
 
-// GetStripePriceMonthlyID returns the Stripe monthly price ID
 func (p *SubscriptionPlan) GetStripePriceMonthlyID() string {
 	return p.StripePriceMonthlyID
 }
 
-// GetStripePriceYearlyID returns the Stripe yearly price ID
 func (p *SubscriptionPlan) GetStripePriceYearlyID() string {
 	return p.StripePriceYearlyID
 }
 
-// GetTrialDays returns the trial days
 func (p *SubscriptionPlan) GetTrialDays() int {
 	return p.TrialDays
 }
 
-// GetIsActive returns if the plan is active
 func (p *SubscriptionPlan) GetIsActive() bool {
 	return p.IsActive
 }
 
-// GetCreatedAt returns creation time
 func (p *SubscriptionPlan) GetCreatedAt() time.Time {
 	return p.CreatedAt
 }
 
-// GetUpdatedAt returns last update time
 func (p *SubscriptionPlan) GetUpdatedAt() time.Time {
 	return p.UpdatedAt
 }

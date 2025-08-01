@@ -3,12 +3,11 @@ package rolemodel
 import (
 	"time"
 
-	"{{.Project.GoModule}}/internal/role/interface"
+	roleinterface "{{.Project.GoModule}}/internal/role/interface"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// DefaultUserRole represents the assignment of a role to a user
 type DefaultUserRole struct {
 	ID         uuid.UUID      `json:"id" gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	UserID     uuid.UUID      `json:"user_id" gorm:"type:uuid;not null;index"`
@@ -22,12 +21,10 @@ type DefaultUserRole struct {
 	DeletedAt  gorm.DeletedAt `json:"deleted_at" gorm:"index"`
 }
 
-// TableName specifies the table name for GORM
 func (DefaultUserRole) TableName() string {
 	return "user_roles"
 }
 
-// Implement UserRole interface
 func (ur *DefaultUserRole) GetID() uuid.UUID { return ur.ID }
 func (ur *DefaultUserRole) GetUserID() uuid.UUID { return ur.UserID }
 func (ur *DefaultUserRole) GetRoleID() uuid.UUID { return ur.RoleID }
@@ -44,7 +41,6 @@ func (ur *DefaultUserRole) IsActive() bool {
 	return ur.ExpiresAt == nil || ur.ExpiresAt.After(time.Now())
 }
 
-// BeforeCreate hook for GORM
 func (ur *DefaultUserRole) BeforeCreate(tx *gorm.DB) error {
 	if ur.ID == uuid.Nil {
 		ur.ID = uuid.New()

@@ -1,57 +1,52 @@
 package rolecontroller
 
 import (
+	"fmt"
 	"net/http"
+	"{{.Project.GoModule}}/internal/core"
 	"strconv"
 	"time"
 
-	"{{.Project.GoModule}}/internal/core"
-	"{{.Project.GoModule}}/internal/role/interface"
-	"{{.Project.GoModule}}/internal/role/middleware"
+	roleinterface "{{.Project.GoModule}}/internal/role/interface"
+	rolemiddleware "{{.Project.GoModule}}/internal/role/middleware"
+
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-// RoleController handles HTTP requests for role management
 type RoleController struct {
 	service roleinterface.RoleService
 }
 
-// NewRoleController creates a new role controller
 func NewRoleController(service roleinterface.RoleService) *RoleController {
 	return &RoleController{
 		service: service,
 	}
 }
 
-// RegisterRoutes registers all role-related routes
 func (rc *RoleController) RegisterRoutes(e *echo.Echo, basePath string, rbacMiddleware *rolemiddleware.RBACMiddleware) {
 	group := e.Group(basePath)
-	
-	// Role management endpoints (admin only)
+
 	roles := group.Group("/roles")
 	roles.Use(rbacMiddleware.RequirePermission("roles:read"))
-	
+
 	roles.GET("", rc.ListRoles)
 	roles.GET("/:id", rc.GetRole)
-	
-	// Create/update/delete require higher permissions
+
 	roles.POST("", rc.CreateRole, rbacMiddleware.RequirePermission("roles:create"))
 	roles.PUT("/:id", rc.UpdateRole, rbacMiddleware.RequirePermission("roles:update"))
 	roles.DELETE("/:id", rc.DeleteRole, rbacMiddleware.RequirePermission("roles:delete"))
-	
-	// User role assignment endpoints
+
 	userRoles := group.Group("/users/:userId/roles")
 	userRoles.Use(rbacMiddleware.RequirePermission("users:roles:read"))
-	
+
 	userRoles.GET("", rc.GetUserRoles)
 	userRoles.POST("/:roleId", rc.AssignRole, rbacMiddleware.RequirePermission("users:roles:assign"))
 	userRoles.DELETE("/:roleId", rc.UnassignRole, rbacMiddleware.RequirePermission("users:roles:unassign"))
-	
-	// Permission check endpoints (for current user)
+
 	permissions := group.Group("/permissions")
 	permissions.Use(rbacMiddleware.InjectUserPermissions())
-	
+
 	permissions.GET("/my", rc.GetMyPermissions)
 	permissions.POST("/check", rc.CheckPermissions)
 }
@@ -73,30 +68,30 @@ func (rc *RoleController) ListRoles(c echo.Context) error {
 	filters := roleinterface.RoleFilters{
 		Name: c.QueryParam("name"),
 	}
-	
+
 	if isSystem := c.QueryParam("is_system"); isSystem != "" {
 		if b, err := strconv.ParseBool(isSystem); err == nil {
 			filters.IsSystem = &b
 		}
 	}
-	
+
 	if limit := c.QueryParam("limit"); limit != "" {
 		if l, err := strconv.Atoi(limit); err == nil {
 			filters.Limit = l
 		}
 	}
-	
+
 	if offset := c.QueryParam("offset"); offset != "" {
 		if o, err := strconv.Atoi(offset); err == nil {
 			filters.Offset = o
 		}
 	}
-	
+
 	roles, err := rc.service.GetRoles(c.Request().Context(), filters)
 	if err != nil {
-		return core.Error(c, core.InternalServerError("Failed to fetch roles"))
+		return core.InternalServerError(c, fmt.Errorf("failed to fetch roles"))
 	}
-	
+
 	return core.Success(c, roles)
 }
 
@@ -114,18 +109,17 @@ func (rc *RoleController) ListRoles(c echo.Context) error {
 func (rc *RoleController) GetRole(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("Invalid role ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid role ID"))
 	}
-	
+
 	role, err := rc.service.GetRole(c.Request().Context(), id)
 	if err != nil {
-		return core.Error(c, core.NotFound("Role not found"))
+		return core.NotFound(c, fmt.Errorf("role not found"))
 	}
-	
+
 	return core.Success(c, role)
 }
 
-// CreateRoleRequest represents the request to create a new role
 type CreateRoleRequest struct {
 	Name        string   `json:"name" validate:"required,min=3,max=50"`
 	Description string   `json:"description" validate:"max=200"`
@@ -146,13 +140,13 @@ type CreateRoleRequest struct {
 func (rc *RoleController) CreateRole(c echo.Context) error {
 	var req CreateRoleRequest
 	if err := c.Bind(&req); err != nil {
-		return core.Error(c, core.BadRequest("Invalid request body"))
+		return core.BadRequest(c, fmt.Errorf("invalid request body"))
 	}
-	
+
 	if err := c.Validate(req); err != nil {
-		return core.Error(c, core.ValidationError(err))
+		return core.BadRequest(c, err)
 	}
-	
+
 	role, err := rc.service.CreateRole(
 		c.Request().Context(),
 		req.Name,
@@ -161,13 +155,12 @@ func (rc *RoleController) CreateRole(c echo.Context) error {
 		false, // Not a system role
 	)
 	if err != nil {
-		return core.Error(c, core.InternalServerError("Failed to create role"))
+		return core.InternalServerError(c, fmt.Errorf("failed to create role"))
 	}
-	
+
 	return core.Created(c, role)
 }
 
-// UpdateRoleRequest represents the request to update a role
 type UpdateRoleRequest struct {
 	Name        *string  `json:"name,omitempty" validate:"omitempty,min=3,max=50"`
 	Description *string  `json:"description,omitempty" validate:"omitempty,max=200"`
@@ -190,18 +183,18 @@ type UpdateRoleRequest struct {
 func (rc *RoleController) UpdateRole(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("Invalid role ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid role ID"))
 	}
-	
+
 	var req UpdateRoleRequest
 	if err := c.Bind(&req); err != nil {
-		return core.Error(c, core.BadRequest("Invalid request body"))
+		return core.BadRequest(c, fmt.Errorf("invalid request body"))
 	}
-	
+
 	if err := c.Validate(req); err != nil {
-		return core.Error(c, core.ValidationError(err))
+		return core.BadRequest(c, err)
 	}
-	
+
 	updates := roleinterface.RoleUpdates{
 		Name:        req.Name,
 		Description: req.Description,
@@ -209,12 +202,12 @@ func (rc *RoleController) UpdateRole(c echo.Context) error {
 	if len(req.Permissions) > 0 {
 		updates.Permissions = &req.Permissions
 	}
-	
+
 	role, err := rc.service.UpdateRole(c.Request().Context(), id, updates)
 	if err != nil {
-		return core.Error(c, core.InternalServerError("Failed to update role"))
+		return core.InternalServerError(c, fmt.Errorf("failed to update role"))
 	}
-	
+
 	return core.Success(c, role)
 }
 
@@ -233,13 +226,13 @@ func (rc *RoleController) UpdateRole(c echo.Context) error {
 func (rc *RoleController) DeleteRole(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("Invalid role ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid role ID"))
 	}
-	
+
 	if err := rc.service.DeleteRole(c.Request().Context(), id); err != nil {
-		return core.Error(c, core.InternalServerError("Failed to delete role"))
+		return core.InternalServerError(c, fmt.Errorf("failed to delete role"))
 	}
-	
+
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -257,18 +250,17 @@ func (rc *RoleController) DeleteRole(c echo.Context) error {
 func (rc *RoleController) GetUserRoles(c echo.Context) error {
 	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("Invalid user ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid user ID"))
 	}
-	
+
 	roles, err := rc.service.GetUserRoles(c.Request().Context(), userID)
 	if err != nil {
-		return core.Error(c, core.InternalServerError("Failed to fetch user roles"))
+		return core.InternalServerError(c, fmt.Errorf("failed to fetch user roles"))
 	}
-	
+
 	return core.Success(c, roles)
 }
 
-// AssignRoleRequest represents the request to assign a role to a user
 type AssignRoleRequest struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 }
@@ -289,28 +281,27 @@ type AssignRoleRequest struct {
 func (rc *RoleController) AssignRole(c echo.Context) error {
 	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("Invalid user ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid user ID"))
 	}
-	
+
 	roleID, err := uuid.Parse(c.Param("roleId"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("Invalid role ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid role ID"))
 	}
-	
-	// Get the current user ID as the assigner
+
 	assignedBy, err := rolemiddleware.GetUserIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.Unauthorized("Could not determine assigner"))
+		return core.Unauthorized(c, fmt.Errorf("could not determine assigner"))
 	}
-	
+
 	var req AssignRoleRequest
 	c.Bind(&req) // Optional body
-	
+
 	err = rc.service.AssignRoleToUser(c.Request().Context(), userID, roleID, assignedBy, req.ExpiresAt)
 	if err != nil {
-		return core.Error(c, core.InternalServerError("Failed to assign role"))
+		return core.InternalServerError(c, fmt.Errorf("failed to assign role"))
 	}
-	
+
 	return core.Success(c, map[string]string{
 		"message": "Role assigned successfully",
 	})
@@ -331,19 +322,19 @@ func (rc *RoleController) AssignRole(c echo.Context) error {
 func (rc *RoleController) UnassignRole(c echo.Context) error {
 	userID, err := uuid.Parse(c.Param("userId"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("Invalid user ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid user ID"))
 	}
-	
+
 	roleID, err := uuid.Parse(c.Param("roleId"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("Invalid role ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid role ID"))
 	}
-	
+
 	err = rc.service.UnassignRoleFromUser(c.Request().Context(), userID, roleID)
 	if err != nil {
-		return core.Error(c, core.InternalServerError("Failed to unassign role"))
+		return core.InternalServerError(c, fmt.Errorf("failed to unassign role"))
 	}
-	
+
 	return core.Success(c, map[string]string{
 		"message": "Role unassigned successfully",
 	})
@@ -363,16 +354,14 @@ func (rc *RoleController) GetMyPermissions(c echo.Context) error {
 	return core.Success(c, permissions)
 }
 
-// CheckPermissionsRequest represents the request to check permissions
 type CheckPermissionsRequest struct {
 	Permissions []string `json:"permissions" validate:"required,min=1"`
 	RequireAll  bool     `json:"require_all"`
 }
 
-// CheckPermissionsResponse represents the response for permission check
 type CheckPermissionsResponse struct {
-	HasPermissions bool              `json:"has_permissions"`
-	Details        map[string]bool   `json:"details"`
+	HasPermissions bool            `json:"has_permissions"`
+	Details        map[string]bool `json:"details"`
 }
 
 // CheckPermissions godoc
@@ -388,35 +377,36 @@ type CheckPermissionsResponse struct {
 func (rc *RoleController) CheckPermissions(c echo.Context) error {
 	var req CheckPermissionsRequest
 	if err := c.Bind(&req); err != nil {
-		return core.Error(c, core.BadRequest("Invalid request body"))
+		return core.BadRequest(c, fmt.Errorf("invalid request body"))
 	}
-	
+
 	if err := c.Validate(req); err != nil {
-		return core.Error(c, core.ValidationError(err))
+		return core.BadRequest(c, err)
 	}
-	
+
 	details := make(map[string]bool)
 	hasAll := true
 	hasAny := false
-	
+
 	for _, permission := range req.Permissions {
 		hasPermission := rolemiddleware.UserHasPermission(c, permission)
 		details[permission] = hasPermission
-		
+
 		if hasPermission {
 			hasAny = true
 		} else {
 			hasAll = false
 		}
 	}
-	
+
 	hasPermissions := hasAny
 	if req.RequireAll {
 		hasPermissions = hasAll
 	}
-	
+
 	return core.Success(c, CheckPermissionsResponse{
 		HasPermissions: hasPermissions,
 		Details:        details,
 	})
 }
+

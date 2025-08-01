@@ -10,25 +10,21 @@ import (
 
 // ProjectConfig represents the sgk.json configuration
 type ProjectConfig struct {
-	Version     string            `json:"version"`
-	CliVersion  string            `json:"cli_version"`
-	CreatedAt   time.Time         `json:"created_at"`
-	Project     struct {
+	Version    string            `json:"version"`
+	CliVersion string            `json:"cli_version"`
+	CreatedAt  time.Time         `json:"created_at"`
+	Project    struct {
 		Name     string `json:"name"`
 		GoModule string `json:"go_module"`
 		Database string `json:"database"`
 	} `json:"project"`
-	Modules      map[string]ModuleInfo `json:"modules"`
-	Dependencies []string              `json:"dependencies"`
+	Modules map[string]ModuleInfo `json:"modules"`
 }
 
 // ModuleInfo stores information about an installed module
 type ModuleInfo struct {
-	Version              string                 `json:"version"`
-	InstalledAt          time.Time              `json:"installed_at"`
-	Config               map[string]interface{} `json:"config"`
-	InternalDependencies []string               `json:"internal_dependencies,omitempty"`
-	ExternalDependencies []string               `json:"external_dependencies,omitempty"`
+	Version     string    `json:"version"`
+	InstalledAt time.Time `json:"installed_at"`
 }
 
 const configFileName = "sgk.json"
@@ -69,11 +65,7 @@ func InitProjectWithConfig(projectName, goModule, database string) error {
 		Version:    "1.0.0",
 		CliVersion: "1.0.0", // TODO: Get from build info
 		CreatedAt:  time.Now(),
-		Modules: make(map[string]ModuleInfo),
-		Dependencies: []string{
-			"github.com/labstack/echo/v4",
-			"github.com/golang-jwt/jwt/v5",
-		},
+		Modules:    make(map[string]ModuleInfo),
 	}
 
 	config.Project.Name = projectName

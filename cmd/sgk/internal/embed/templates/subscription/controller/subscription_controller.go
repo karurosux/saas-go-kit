@@ -1,68 +1,81 @@
 package subscriptioncontroller
 
 import (
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
-	"time"
-	
 	"{{.Project.GoModule}}/internal/core"
-	"{{.Project.GoModule}}/internal/subscription/interface"
-	"{{.Project.GoModule}}/internal/subscription/middleware"
-	"{{.Project.GoModule}}/internal/subscription/service"
+	"time"
+
+	subscriptioninterface "{{.Project.GoModule}}/internal/subscription/interface"
+	subscriptionmiddleware "{{.Project.GoModule}}/internal/subscription/middleware"
+
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
 
-// SubscriptionController handles subscription requests
 type SubscriptionController struct {
 	service subscriptioninterface.SubscriptionService
 }
 
-// NewSubscriptionController creates a new subscription controller
 func NewSubscriptionController(service subscriptioninterface.SubscriptionService) *SubscriptionController {
 	return &SubscriptionController{
 		service: service,
 	}
 }
 
-// RegisterRoutes registers all subscription-related routes
+func (sc *SubscriptionController) handleError(c echo.Context, err error) error {
+	var appErr *core.AppError
+	if errors.As(err, &appErr) {
+		switch appErr.Code {
+		case core.ErrCodeNotFound:
+			return core.NotFound(c, err)
+		case core.ErrCodeUnauthorized:
+			return core.Unauthorized(c, err)
+		case core.ErrCodeForbidden:
+			return core.Forbidden(c, err)
+		case core.ErrCodeBadRequest, core.ErrCodeValidation:
+			return core.BadRequest(c, err)
+		case core.ErrCodeConflict:
+			return core.Error(c, http.StatusConflict, err)
+		default:
+			return core.InternalServerError(c, err)
+		}
+	}
+	return core.InternalServerError(c, err)
+}
+
 func (sc *SubscriptionController) RegisterRoutes(e *echo.Echo, basePath string, subMiddleware *subscriptionmiddleware.SubscriptionMiddleware) {
 	group := e.Group(basePath)
-	
-	// Public routes
+
 	group.GET("/plans", sc.GetPlans)
 	group.GET("/plans/:planId", sc.GetPlan)
-	
-	// Webhook route
+
 	group.POST("/webhook/stripe", sc.HandleStripeWebhook)
-	
-	// Account-scoped routes
+
 	accountGroup := group.Group("/accounts/:accountId")
 	accountGroup.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			// Extract and validate account ID
 			accountIDStr := c.Param("accountId")
 			accountID, err := uuid.Parse(accountIDStr)
 			if err != nil {
-				return core.Error(c, core.BadRequest("invalid account ID"))
+				return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 			}
 			subscriptionmiddleware.SetAccountIDInContext(c, accountID)
 			return next(c)
 		}
 	})
-	
-	// Subscription management
+
 	accountGroup.GET("/subscription", sc.GetSubscription)
 	accountGroup.POST("/subscription", sc.CreateSubscription)
 	accountGroup.PUT("/subscription", sc.UpdateSubscription, subMiddleware.RequireActiveSubscription())
 	accountGroup.DELETE("/subscription", sc.CancelSubscription, subMiddleware.RequireActiveSubscription())
 	accountGroup.POST("/subscription/reactivate", sc.ReactivateSubscription)
-	
-	// Usage tracking
+
 	accountGroup.GET("/usage", sc.GetUsageReport, subMiddleware.RequireActiveSubscription())
 	accountGroup.GET("/usage/:resource", sc.GetResourceUsage, subMiddleware.RequireActiveSubscription())
-	
-	// Billing
+
 	accountGroup.GET("/invoices", sc.GetInvoices, subMiddleware.RequireActiveSubscription())
 	accountGroup.POST("/checkout", sc.CreateCheckoutSession)
 	accountGroup.POST("/billing-portal", sc.CreateBillingPortalSession, subMiddleware.RequireActiveSubscription())
@@ -80,9 +93,9 @@ func (sc *SubscriptionController) RegisterRoutes(e *echo.Echo, basePath string, 
 func (sc *SubscriptionController) GetPlans(c echo.Context) error {
 	plans, err := sc.service.GetPlans(c.Request().Context())
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, plans)
 }
 
@@ -101,14 +114,14 @@ func (sc *SubscriptionController) GetPlans(c echo.Context) error {
 func (sc *SubscriptionController) GetPlan(c echo.Context) error {
 	planID, err := uuid.Parse(c.Param("planId"))
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid plan ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid plan ID"))
 	}
-	
+
 	plan, err := sc.service.GetPlan(c.Request().Context(), planID)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, plan)
 }
 
@@ -127,18 +140,17 @@ func (sc *SubscriptionController) GetPlan(c echo.Context) error {
 func (sc *SubscriptionController) GetSubscription(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	subscription, err := sc.service.GetSubscription(c.Request().Context(), accountID)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, subscription)
 }
 
-// CreateSubscriptionRequest represents subscription creation request
 type CreateSubscriptionRequest struct {
 	PlanID          uuid.UUID                           `json:"plan_id" validate:"required"`
 	BillingPeriod   subscriptioninterface.BillingPeriod `json:"billing_period" validate:"required,oneof=monthly yearly"`
@@ -161,35 +173,34 @@ type CreateSubscriptionRequest struct {
 func (sc *SubscriptionController) CreateSubscription(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	var req CreateSubscriptionRequest
 	if err := c.Bind(&req); err != nil {
-		return core.Error(c, core.BadRequest("invalid request body"))
+		return core.BadRequest(c, fmt.Errorf("invalid request body"))
 	}
-	
+
 	if err := c.Validate(req); err != nil {
-		return core.Error(c, core.ValidationError(err))
+		return core.BadRequest(c, err)
 	}
-	
-	createReq := subscriptionservice.CreateSubscriptionRequest{
+
+	createReq := subscriptioninterface.ServiceCreateSubscriptionRequest{
 		AccountID:       accountID,
 		PlanID:          req.PlanID,
 		BillingPeriod:   req.BillingPeriod,
 		PaymentMethodID: req.PaymentMethodID,
 		CustomerEmail:   req.CustomerEmail,
 	}
-	
+
 	subscription, err := sc.service.CreateSubscription(c.Request().Context(), createReq)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Created(c, subscription)
 }
 
-// UpdateSubscriptionRequest represents subscription update request
 type UpdateSubscriptionRequest struct {
 	PlanID        uuid.UUID                           `json:"plan_id" validate:"required"`
 	BillingPeriod subscriptioninterface.BillingPeriod `json:"billing_period" validate:"required,oneof=monthly yearly"`
@@ -211,32 +222,31 @@ type UpdateSubscriptionRequest struct {
 func (sc *SubscriptionController) UpdateSubscription(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	var req UpdateSubscriptionRequest
 	if err := c.Bind(&req); err != nil {
-		return core.Error(c, core.BadRequest("invalid request body"))
+		return core.BadRequest(c, fmt.Errorf("invalid request body"))
 	}
-	
+
 	if err := c.Validate(req); err != nil {
-		return core.Error(c, core.ValidationError(err))
+		return core.BadRequest(c, err)
 	}
-	
-	updateReq := subscriptionservice.UpdateSubscriptionRequest{
+
+	updateReq := subscriptioninterface.ServiceUpdateSubscriptionRequest{
 		NewPlanID:     req.PlanID,
 		BillingPeriod: req.BillingPeriod,
 	}
-	
+
 	subscription, err := sc.service.UpdateSubscription(c.Request().Context(), accountID, updateReq)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, subscription)
 }
 
-// CancelSubscriptionRequest represents subscription cancellation request
 type CancelSubscriptionRequest struct {
 	Immediately bool `json:"immediately"`
 }
@@ -257,16 +267,16 @@ type CancelSubscriptionRequest struct {
 func (sc *SubscriptionController) CancelSubscription(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	var req CancelSubscriptionRequest
 	c.Bind(&req) // Optional body
-	
+
 	if err := sc.service.CancelSubscription(c.Request().Context(), accountID, req.Immediately); err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, map[string]string{
 		"message": "Subscription cancelled successfully",
 	})
@@ -287,13 +297,13 @@ func (sc *SubscriptionController) CancelSubscription(c echo.Context) error {
 func (sc *SubscriptionController) ReactivateSubscription(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	if err := sc.service.ReactivateSubscription(c.Request().Context(), accountID); err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, map[string]string{
 		"message": "Subscription reactivated successfully",
 	})
@@ -322,23 +332,23 @@ type GetUsageReportRequest struct {
 func (sc *SubscriptionController) GetUsageReport(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	var req GetUsageReportRequest
 	if err := c.Bind(&req); err != nil {
-		return core.Error(c, core.BadRequest("invalid request parameters"))
+		return core.BadRequest(c, fmt.Errorf("invalid request parameters"))
 	}
-	
+
 	if err := c.Validate(req); err != nil {
-		return core.Error(c, core.ValidationError(err))
+		return core.BadRequest(c, err)
 	}
-	
+
 	report, err := sc.service.GetUsageReport(c.Request().Context(), accountID, req.StartDate, req.EndDate)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, report)
 }
 
@@ -350,7 +360,7 @@ func (sc *SubscriptionController) GetUsageReport(c echo.Context) error {
 // @Produce json
 // @Param accountId path string true "Account ID"
 // @Param resource path string true "Resource name"
-// @Success 200 {object} map[string]interface{}
+// @Success 200 {object} map[string]any
 // @Failure 400 {object} core.ErrorResponse
 // @Failure 404 {object} core.ErrorResponse
 // @Failure 500 {object} core.ErrorResponse
@@ -358,23 +368,23 @@ func (sc *SubscriptionController) GetUsageReport(c echo.Context) error {
 func (sc *SubscriptionController) GetResourceUsage(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	resource := c.Param("resource")
 	if resource == "" {
-		return core.Error(c, core.BadRequest("resource name required"))
+		return core.BadRequest(c, fmt.Errorf("resource name required"))
 	}
-	
+
 	usage, err := sc.service.GetUsage(c.Request().Context(), accountID, resource)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	// Also check limit
 	withinLimit, remaining, _ := sc.service.CheckLimit(c.Request().Context(), accountID, resource)
-	
-	return core.Success(c, map[string]interface{}{
+
+	return core.Success(c, map[string]any{
 		"resource":     resource,
 		"usage":        usage,
 		"remaining":    remaining,
@@ -397,14 +407,14 @@ func (sc *SubscriptionController) GetResourceUsage(c echo.Context) error {
 func (sc *SubscriptionController) GetInvoices(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	invoices, err := sc.service.GetInvoices(c.Request().Context(), accountID)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, invoices)
 }
 
@@ -431,30 +441,30 @@ type CreateCheckoutSessionRequest struct {
 func (sc *SubscriptionController) CreateCheckoutSession(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	var req CreateCheckoutSessionRequest
 	if err := c.Bind(&req); err != nil {
-		return core.Error(c, core.BadRequest("invalid request body"))
+		return core.BadRequest(c, fmt.Errorf("invalid request body"))
 	}
-	
+
 	if err := c.Validate(req); err != nil {
-		return core.Error(c, core.ValidationError(err))
+		return core.BadRequest(c, err)
 	}
-	
+
 	checkoutReq := subscriptioninterface.CheckoutRequest{
 		PlanID:        req.PlanID,
 		BillingPeriod: req.BillingPeriod,
 		SuccessURL:    req.SuccessURL,
 		CancelURL:     req.CancelURL,
 	}
-	
+
 	sessionURL, err := sc.service.CreateCheckoutSession(c.Request().Context(), accountID, checkoutReq)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, map[string]string{
 		"checkout_url": sessionURL,
 	})
@@ -475,14 +485,14 @@ func (sc *SubscriptionController) CreateCheckoutSession(c echo.Context) error {
 func (sc *SubscriptionController) CreateBillingPortalSession(c echo.Context) error {
 	accountID, err := subscriptionmiddleware.GetAccountIDFromContext(c)
 	if err != nil {
-		return core.Error(c, core.BadRequest("invalid account ID"))
+		return core.BadRequest(c, fmt.Errorf("invalid account ID"))
 	}
-	
+
 	portalURL, err := sc.service.CreateBillingPortalSession(c.Request().Context(), accountID)
 	if err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return core.Success(c, map[string]string{
 		"portal_url": portalURL,
 	})
@@ -501,18 +511,18 @@ func (sc *SubscriptionController) CreateBillingPortalSession(c echo.Context) err
 func (sc *SubscriptionController) HandleStripeWebhook(c echo.Context) error {
 	payload, err := io.ReadAll(c.Request().Body)
 	if err != nil {
-		return core.Error(c, core.BadRequest("failed to read request body"))
+		return core.BadRequest(c, fmt.Errorf("failed to read request body"))
 	}
-	
+
 	signature := c.Request().Header.Get("Stripe-Signature")
 	if signature == "" {
-		return core.Error(c, core.BadRequest("missing stripe signature"))
+		return core.BadRequest(c, fmt.Errorf("missing stripe signature"))
 	}
-	
+
 	if err := sc.service.HandleStripeWebhook(c.Request().Context(), payload, signature); err != nil {
-		return core.Error(c, err)
+		return sc.handleError(c, err)
 	}
-	
+
 	return c.JSON(http.StatusOK, map[string]string{
 		"status": "success",
 	})

@@ -3,7 +3,7 @@ package authservice
 import (
 	"time"
 	
-	"{{.Project.GoModule}}/internal/auth/interface"
+	authinterface "{{.Project.GoModule}}/internal/auth/interface"
 	"golang.org/x/crypto/bcrypt"
 )
 
