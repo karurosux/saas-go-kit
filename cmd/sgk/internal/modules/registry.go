@@ -62,87 +62,10 @@ var availableModules = map[string]ModuleDefinition{
 			"repositories/gorm/migrations.go",
 		},
 	},
-	"subscription": {
-		Name:        "subscription",
-		Version:     "1.0.0",
-		Description: "Subscription and billing management with Stripe integration",
-		Dependencies: []string{
-			"github.com/stripe/stripe-go/v76",
-		},
-		InternalDependencies: []string{
-			"core",
-		},
-		ContainerServices: map[string]string{
-			"echo": "echo.Echo",
-			"db":   "gorm.DB",
-		},
-		Files: []string{
-			"handlers.go",
-			"service.go",
-			"models.go",
-			"interfaces.go",
-			"module.go",
-			"middleware.go",
-			"stripe_provider.go",
-			"repositories/gorm/subscription_repository.go",
-			"repositories/gorm/subscription_plan_repository.go",
-			"repositories/gorm/usage_repository.go",
-			"repositories/gorm/migrations.go",
-		},
-	},
-	"team": {
-		Name:        "team",
-		Version:     "1.0.0",
-		Description: "Team management with role-based access control",
-		Dependencies: []string{},
-		InternalDependencies: []string{
-			"core",
-			"auth",
-			"role",
-		},
-		ContainerServices: map[string]string{
-			"echo":         "echo.Echo",
-			"db":           "gorm.DB",
-			"auth":         "auth.Service",
-			"notification": "notification.Service",
-		},
-		Files: []string{
-			"handlers.go",
-			"service.go",
-			"models.go",
-			"interfaces.go",
-			"module.go",
-			"repositories/gorm/team_member_repository.go",
-			"repositories/gorm/user_repository.go",
-			"repositories/gorm/invitation_token_repository.go",
-			"repositories/gorm/migrations.go",
-		},
-	},
-	"notification": {
-		Name:        "notification",
-		Version:     "1.0.0",
-		Description: "Multi-channel notification system (email, SMS, push)",
-		Dependencies: []string{
-			"gopkg.in/gomail.v2",
-		},
-		InternalDependencies: []string{
-			"core",
-		},
-		ContainerServices: map[string]string{
-			"echo": "echo.Echo",
-		},
-		Files: []string{
-			"handlers.go",
-			"service.go",
-			"interfaces.go",
-			"smtp_provider.go",
-			"module.go",
-		},
-	},
 	"health": {
-		Name:        "health",
-		Version:     "1.0.0",
-		Description: "Application health monitoring with multiple check types",
+		Name:         "health",
+		Version:      "1.0.0",
+		Description:  "Application health monitoring with multiple check types",
 		Dependencies: []string{},
 		InternalDependencies: []string{
 			"core",
@@ -160,9 +83,9 @@ var availableModules = map[string]ModuleDefinition{
 		},
 	},
 	"role": {
-		Name:        "role",
-		Version:     "1.0.0",
-		Description: "Role-based access control and permissions management",
+		Name:         "role",
+		Version:      "1.0.0",
+		Description:  "Role-based access control and permissions management",
 		Dependencies: []string{},
 		InternalDependencies: []string{
 			"core",
@@ -182,65 +105,10 @@ var availableModules = map[string]ModuleDefinition{
 			"repositories/gorm/user_role_repository.go",
 		},
 	},
-	"job": {
-		Name:        "job",
-		Version:     "1.0.0",
-		Description: "Background job processing system",
-		Dependencies: []string{},
-		InternalDependencies: []string{
-			"core",
-		},
-		ContainerServices: map[string]string{
-			"echo": "echo.Echo",
-			"db":   "gorm.DB",
-		},
-		Files: []string{
-			"interfaces.go",
-			"models.go",
-			"handlers.go",
-			"service.go",
-			"queue.go",
-			"errors.go",
-			"module.go",
-			"repositories/gorm/job_repository.go",
-			"repositories/gorm/job_result_repository.go",
-			"repositories/gorm/migrations.go",
-		},
-	},
-	"sse": {
-		Name:        "sse",
-		Version:     "1.0.0",
-		Description: "Server-sent events for real-time communication",
-		Dependencies: []string{},
-		InternalDependencies: []string{
-			"core",
-		},
-		ContainerServices: map[string]string{
-			"echo": "echo.Echo",
-		},
-		Files: []string{
-			"sse.go",
-			"module.go",
-		},
-	},
-	"container": {
-		Name:        "container",
-		Version:     "1.0.0",
-		Description: "Dependency injection container",
-		Dependencies: []string{},
-		InternalDependencies: []string{
-			"core",
-		},
-		ContainerServices: map[string]string{},
-		Files: []string{
-			"container.go",
-			"interfaces.go",
-		},
-	},
 	"email": {
-		Name:        "email",
-		Version:     "1.0.0",
-		Description: "Email service with SMTP support, template management, and queue processing",
+		Name:         "email",
+		Version:      "1.0.0",
+		Description:  "Email service with SMTP support, template management, and queue processing",
 		Dependencies: []string{},
 		InternalDependencies: []string{
 			"core",
@@ -252,7 +120,7 @@ var availableModules = map[string]ModuleDefinition{
 		Files: []string{
 			"interface/interfaces.go",
 			"service/email_service.go",
-			"service/smtp_sender.go", 
+			"service/smtp_sender.go",
 			"service/mock_sender.go",
 			"service/template_manager.go",
 			"controller/email_controller.go",
