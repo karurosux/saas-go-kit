@@ -7,13 +7,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// ListModulesFunc is the function signature for listing modules
 type ListModulesFunc func() 
 
-// ListInstalledModulesFunc is the function signature for listing installed modules
 type ListInstalledModulesFunc func() error
 
-// ListCmd creates the list command
+func ListCmd(listModules ListModulesFunc, listInstalled ListInstalledModulesFunc) *cobra.Command {
 func ListCmd(listModules ListModulesFunc, listInstalled ListInstalledModulesFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",

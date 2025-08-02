@@ -70,7 +70,6 @@ func UserHasPermission(c echo.Context, permission string) bool {
 		if p == permission || p == roleconstants.PermissionAll {
 			return true
 		}
-		// Check wildcard permissions
 		if len(p) > 2 && p[len(p)-2:] == ":*" {
 			prefix := p[:len(p)-1]
 			if len(permission) >= len(prefix) && permission[:len(prefix)] == prefix {

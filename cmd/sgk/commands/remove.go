@@ -7,10 +7,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// RemoveModuleFunc is the function signature for removing modules
 type RemoveModuleFunc func(moduleName string) error
 
-// RemoveCmd creates the remove command
 func RemoveCmd(removeModule RemoveModuleFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "remove [module]",

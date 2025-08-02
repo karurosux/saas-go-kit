@@ -9,7 +9,6 @@ import (
 	"github.com/karurosux/saas-go-kit/cmd/sgk/internal/embed"
 )
 
-// TemplateData holds data for template rendering
 type TemplateData struct {
 	Project             ProjectInfo
 	Modules            []string
@@ -27,41 +26,33 @@ type ProjectInfo struct {
 	Database string
 }
 
-// createNewProject creates a new project with specified modules
 func CreateNewProject(projectName string, modules []string, goModule, database string) error {
-	// Validate project name
 	if err := validateProjectName(projectName); err != nil {
 		return err
 	}
 
-	// Check if directory already exists
 	if _, err := os.Stat(projectName); err == nil {
 		return fmt.Errorf("directory '%s' already exists", projectName)
 	}
 
-	// Create project directory
 	if err := os.MkdirAll(projectName, 0755); err != nil {
 		return fmt.Errorf("failed to create project directory: %w", err)
 	}
 
-	// Store original directory
 	originalDir, err := os.Getwd()
 	if err != nil {
 		return err
 	}
 
-	// Change to project directory
 	if err := os.Chdir(projectName); err != nil {
 		return err
 	}
 	defer os.Chdir(originalDir)
 
-	// Set go module path
 	if goModule == "" {
 		goModule = projectName
 	}
 
-	// Create go.mod
 	goModContent := fmt.Sprintf(`module %s
 
 go 1.21
@@ -77,17 +68,13 @@ require (
 		return fmt.Errorf("failed to create go.mod: %w", err)
 	}
 
-	// Initialize project with configuration
 	if err := InitProjectWithConfig(projectName, goModule, database); err != nil {
 		return fmt.Errorf("failed to initialize project: %w", err)
 	}
 
-	// Note: Core templates and modules will be handled by main package to avoid circular imports
 
-	// Prepare template data
 	templateData := prepareTemplateData(projectName, goModule, database, modules)
 
-	// Generate all project files from templates
 	if err := generateFromEmbeddedTemplate("main.go", "templates/project/main.tmpl", templateData); err != nil {
 		return fmt.Errorf("failed to generate main.go: %w", err)
 	}
@@ -107,13 +94,11 @@ require (
 	return nil
 }
 
-// validateProjectName validates the project name
 func validateProjectName(name string) error {
 	if name == "" {
 		return fmt.Errorf("project name cannot be empty")
 	}
 
-	// Check for valid Go module name characters
 	validName := regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)
 	if !validName.MatchString(name) {
 		return fmt.Errorf("project name must contain only letters, numbers, hyphens, and underscores")
@@ -122,7 +107,6 @@ func validateProjectName(name string) error {
 	return nil
 }
 
-// prepareTemplateData prepares data for template rendering
 func prepareTemplateData(projectName, goModule, database string, modules []string) TemplateData {
 	var dbURL, dbPort, dbServiceTemplate, volumeName string
 	
@@ -144,7 +128,6 @@ func prepareTemplateData(projectName, goModule, database string, modules []strin
 		volumeName = "postgres_data"
 	}
 
-	// Read the service template from embedded filesystem
 	dbService, err := embed.ReadEmbeddedFile(dbServiceTemplate)
 	if err != nil {
 		dbService = "# Error loading database service template"
@@ -166,7 +149,6 @@ func prepareTemplateData(projectName, goModule, database string, modules []strin
 	}
 }
 
-// generateFromEmbeddedTemplate generates a file from an embedded template
 func generateFromEmbeddedTemplate(filename, templatePath string, data TemplateData) error {
 	templateContent, err := embed.ReadEmbeddedFile(templatePath)
 	if err != nil {

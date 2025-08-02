@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Role represents a role with tag-based permissions
 type Role interface {
 	GetID() uuid.UUID
 	GetName() string
@@ -21,7 +20,6 @@ type Role interface {
 	GetUpdatedAt() time.Time
 }
 
-// UserRole represents the assignment of a role to a user
 type UserRole interface {
 	GetID() uuid.UUID
 	GetUserID() uuid.UUID
@@ -33,7 +31,6 @@ type UserRole interface {
 	IsActive() bool
 }
 
-// RoleFilters for querying roles
 type RoleFilters struct {
 	Name       string
 	IsSystem   *bool
@@ -42,26 +39,19 @@ type RoleFilters struct {
 	Offset     int
 }
 
-// RoleUpdates for updating roles
 type RoleUpdates struct {
 	Name        *string
 	Description *string
 	Permissions *[]string
 }
 
-// PermissionChecker interface for middleware
 type PermissionChecker interface {
 	Check(ctx context.Context, userID uuid.UUID, permission string) (bool, error)
 }
 
-// PermissionUtils interface for permission utilities
 type PermissionUtils interface {
-	// Parse permission tag: "users:read" -> ("users", "read")
 	ParsePermission(permission string) (resource, action string)
-	// Check if permission matches pattern (supports wildcards)
 	MatchesPattern(permission, pattern string) bool
-	// Build permission tag: ("users", "read") -> "users:read"
 	BuildPermission(resource, action string) string
-	// Validate permission format
 	IsValidPermission(permission string) bool
 }

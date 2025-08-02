@@ -92,14 +92,12 @@ func (m *AuthMiddleware) OptionalAuth() echo.MiddlewareFunc {
 			
 			token, err := m.extractToken(c)
 			if err != nil || token == "" {
-				// No token is OK for optional auth
 				c.Set(authconstants.ContextKeyIsAuthenticated, false)
 				return next(c)
 			}
 			
 			account, err := m.authService.ValidateSession(c.Request().Context(), token)
 			if err != nil {
-				// Invalid token is OK for optional auth
 				c.Set(authconstants.ContextKeyIsAuthenticated, false)
 				return next(c)
 			}
@@ -113,7 +111,6 @@ func (m *AuthMiddleware) OptionalAuth() echo.MiddlewareFunc {
 	}
 }
 
-// extractToken extracts the token from the request
 func (m *AuthMiddleware) extractToken(c echo.Context) (string, error) {
 	parts := strings.Split(m.config.TokenLookup, ":")
 	if len(parts) != 2 {

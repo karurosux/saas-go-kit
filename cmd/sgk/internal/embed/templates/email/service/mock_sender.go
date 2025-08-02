@@ -7,19 +7,16 @@ import (
 	emailinterface "{{.Project.GoModule}}/internal/email/interface"
 )
 
-// MockSender implements EmailSender for development/testing
 type MockSender struct {
 	logEmails bool
 }
 
-// NewMockSender creates a new mock email sender
 func NewMockSender(logEmails bool) *MockSender {
 	return &MockSender{
 		logEmails: logEmails,
 	}
 }
 
-// Send logs the email instead of sending it
 func (m *MockSender) Send(ctx context.Context, message *emailinterface.EmailMessage) error {
 	if m.logEmails {
 		log.Printf("📧 Mock Email Sent:\n")
@@ -40,7 +37,6 @@ func (m *MockSender) Send(ctx context.Context, message *emailinterface.EmailMess
 	return nil
 }
 
-// SendBatch logs multiple emails
 func (m *MockSender) SendBatch(ctx context.Context, messages []*emailinterface.EmailMessage) error {
 	for _, message := range messages {
 		if err := m.Send(ctx, message); err != nil {

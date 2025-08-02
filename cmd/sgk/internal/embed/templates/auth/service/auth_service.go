@@ -77,13 +77,11 @@ func (s *AuthService) Register(ctx context.Context, req authinterface.RegisterRe
 	
 	if s.config.IsEmailVerificationRequired() {
 		if err := s.SendEmailVerification(ctx, account.ID); err != nil {
-			// Log error but don't fail registration
 			fmt.Printf("Failed to send verification email: %v\n", err)
 		}
 	}
 	
 	if err := s.emailSender.SendWelcomeEmail(account.Email); err != nil {
-		// Log error but don't fail registration
 		fmt.Printf("Failed to send welcome email: %v\n", err)
 	}
 	
@@ -128,7 +126,6 @@ func (s *AuthService) RefreshSession(ctx context.Context, refreshToken string) (
 	}
 	
 	if err := s.sessionStore.DeleteByToken(ctx, oldSession.GetToken()); err != nil {
-		// Log error but continue
 		fmt.Printf("Failed to delete old session: %v\n", err)
 	}
 	
@@ -199,7 +196,6 @@ func (s *AuthService) VerifyEmail(ctx context.Context, tokenStr string) error {
 	}
 	
 	if err := s.tokenRepo.MarkAsUsed(ctx, token.GetID()); err != nil {
-		// Log error but don't fail
 		fmt.Printf("Failed to mark token as used: %v\n", err)
 	}
 	
@@ -266,7 +262,6 @@ func (s *AuthService) VerifyPhone(ctx context.Context, accountID uuid.UUID, code
 	}
 	
 	if err := s.tokenRepo.MarkAsUsed(ctx, validToken.GetID()); err != nil {
-		// Log error but don't fail
 		fmt.Printf("Failed to mark token as used: %v\n", err)
 	}
 	
@@ -276,7 +271,6 @@ func (s *AuthService) VerifyPhone(ctx context.Context, accountID uuid.UUID, code
 func (s *AuthService) SendPasswordReset(ctx context.Context, email string) error {
 	account, err := s.accountRepo.GetByEmail(ctx, email)
 	if err != nil {
-		// Don't reveal if account exists
 		return nil
 	}
 	
@@ -333,12 +327,10 @@ func (s *AuthService) ResetPassword(ctx context.Context, tokenStr, newPassword s
 	}
 	
 	if err := s.tokenRepo.MarkAsUsed(ctx, token.GetID()); err != nil {
-		// Log error but don't fail
 		fmt.Printf("Failed to mark token as used: %v\n", err)
 	}
 	
 	if err := s.sessionStore.Delete(ctx, account.GetID()); err != nil {
-		// Log error but don't fail
 		fmt.Printf("Failed to delete sessions: %v\n", err)
 	}
 	
@@ -370,7 +362,6 @@ func (s *AuthService) ChangePassword(ctx context.Context, accountID uuid.UUID, o
 	}
 	
 	if err := s.sessionStore.Delete(ctx, accountID); err != nil {
-		// Log error but don't fail
 		fmt.Printf("Failed to delete sessions: %v\n", err)
 	}
 	

@@ -7,10 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GenerateClientsFunc is the function signature for generating clients
 type GenerateClientsFunc func() error
 
-// GenerateCmd creates the generate command
+func GenerateCmd(generateClients GenerateClientsFunc) *cobra.Command {
 func GenerateCmd(generateClients GenerateClientsFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "generate",

@@ -1,6 +1,5 @@
 package authconstants
 
-// Error messages
 const (
 	ErrInvalidCredentials      = "invalid email or password"
 	ErrAccountNotFound         = "account not found"

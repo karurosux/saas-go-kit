@@ -49,4 +49,3 @@ func NewValidationError(message string) *AppError {
 func NewNotFoundError(resource string) *AppError {
 	return NewAppError(ErrCodeNotFound, fmt.Sprintf("%s not found", resource))
 }
-

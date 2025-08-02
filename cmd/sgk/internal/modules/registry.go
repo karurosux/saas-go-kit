@@ -4,7 +4,6 @@ import (
 	"fmt"
 )
 
-// ModuleDefinition defines a module's metadata and dependencies
 type ModuleDefinition struct {
 	Name                 string            `json:"name"`
 	Version              string            `json:"version"`
@@ -17,12 +16,10 @@ type ModuleDefinition struct {
 	Options              map[string]string `json:"options"`
 }
 
-// GetAvailableModules returns all available modules
 func GetAvailableModules() map[string]ModuleDefinition {
 	return availableModules
 }
 
-// GetModule returns a specific module definition
 func GetModule(name string) (ModuleDefinition, error) {
 	module, exists := availableModules[name]
 	if !exists {
@@ -31,13 +28,11 @@ func GetModule(name string) (ModuleDefinition, error) {
 	return module, nil
 }
 
-// IsModuleAvailable checks if a module exists
 func IsModuleAvailable(name string) bool {
 	_, exists := availableModules[name]
 	return exists
 }
 
-// availableModules defines all available modules
 var availableModules = map[string]ModuleDefinition{
 	"auth": {
 		Name:        "auth",
@@ -269,7 +264,6 @@ var availableModules = map[string]ModuleDefinition{
 	},
 }
 
-// ListAvailableModules prints all available modules to stdout
 func ListAvailableModules() {
 	fmt.Println("📦 Available modules:")
 	fmt.Println()

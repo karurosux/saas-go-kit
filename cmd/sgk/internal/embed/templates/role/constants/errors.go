@@ -1,6 +1,5 @@
 package roleconstants
 
-// Error messages
 const (
 	ErrRoleNotFound          = "role not found"
 	ErrRoleAlreadyExists     = "role already exists"

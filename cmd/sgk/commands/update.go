@@ -7,10 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// UpdateModuleFunc is the function signature for updating modules
 type UpdateModuleFunc func(moduleName string) error
 
-// UpdateCmd creates the update command
+func UpdateCmd(updateModule UpdateModuleFunc) *cobra.Command {
 func UpdateCmd(updateModule UpdateModuleFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "update [module]",

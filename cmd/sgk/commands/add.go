@@ -7,10 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// AddModuleFunc is the function signature for adding modules
 type AddModuleFunc func(moduleName string, options map[string]interface{}) error
 
-// AddCmd creates the add command
+func AddCmd(addModule AddModuleFunc) *cobra.Command {
 func AddCmd(addModule AddModuleFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [module]",
@@ -20,7 +19,6 @@ func AddCmd(addModule AddModuleFunc) *cobra.Command {
 		Run: func(cmd *cobra.Command, args []string) {
 			moduleName := args[0]
 			
-			// Get flags
 			database, _ := cmd.Flags().GetString("database")
 			routePrefix, _ := cmd.Flags().GetString("route-prefix")
 			
@@ -37,7 +35,6 @@ func AddCmd(addModule AddModuleFunc) *cobra.Command {
 		},
 	}
 
-	// Add flags
 	cmd.Flags().String("database", "postgres", "Database type (postgres, mysql, sqlite)")
 	cmd.Flags().String("route-prefix", "", "Route prefix for the module")
 

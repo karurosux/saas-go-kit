@@ -5,7 +5,6 @@ import (
 	emailinterface "{{.Project.GoModule}}/internal/email/interface"
 )
 
-// AutoMigrate runs auto migrations for email models
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
 		&emailinterface.EmailMessage{},

@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Token represents an authentication or verification token
 type Token struct {
 	ID        uuid.UUID                `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	AccountID uuid.UUID                `json:"account_id" gorm:"type:uuid;not null;index"`
@@ -55,7 +54,6 @@ func (t *Token) SetUsed(used bool) {
 	t.Used = used
 }
 
-// IsExpired checks if the token has expired
 func (t *Token) IsExpired() bool {
 	return time.Now().After(t.ExpiresAt)
 }

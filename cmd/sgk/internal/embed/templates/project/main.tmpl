@@ -13,29 +13,23 @@ import (
 )
 
 func main() {
-	// Create dependency injection container
 	container := core.NewContainer()
 	
-	// Register core services
 	if err := core.RegisterCoreServices(container); err != nil {
 		log.Fatalf("Failed to register core services: %v", err)
 	}
 	
-	// Register modules
 {{range .Modules}}
 	if err := {{.}}.RegisterModule(container); err != nil {
 		log.Fatalf(core.ErrMsgModuleRegistration, "{{.}}", err)
 	}
 {{- end}}
 	
-	// Get services from container
 	e := do.MustInvoke[*echo.Echo](container)
 	config := do.MustInvoke[*core.Config](container)
 	
-	// Start server
 	startServer(e, config.Port)
 	
-	// Cleanup on shutdown
 	defer func() {
 		if err := container.Shutdown(); err != nil {
 			log.Printf("Error during container shutdown: %v", err)

@@ -9,23 +9,19 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// HealthController handles health check requests
 type HealthController struct {
 	service healthinterface.HealthService
 }
 
-// NewHealthController creates a new health controller
 func NewHealthController(service healthinterface.HealthService) *HealthController {
 	return &HealthController{
 		service: service,
 	}
 }
 
-// RegisterRoutes registers all health-related routes
 func (hc *HealthController) RegisterRoutes(e *echo.Echo, basePath string) {
 	group := e.Group(basePath)
 	
-	// Health check endpoints
 	group.GET("", hc.GetHealth)
 	group.GET("/live", hc.GetLiveness)
 	group.GET("/ready", hc.GetReadiness)
@@ -33,15 +29,6 @@ func (hc *HealthController) RegisterRoutes(e *echo.Echo, basePath string) {
 	group.GET("/check/:name", hc.GetSpecificCheck)
 }
 
-// GetHealth godoc
-// @Summary Get health status
-// @Description Get basic health status
-// @Tags health
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]any
-// @Success 503 {object} map[string]any
-// @Router /health [get]
 func (hc *HealthController) GetHealth(c echo.Context) error {
 	if hc.service.IsHealthy() {
 		return c.JSON(http.StatusOK, map[string]any{
@@ -54,32 +41,13 @@ func (hc *HealthController) GetHealth(c echo.Context) error {
 	})
 }
 
-// GetLiveness godoc
-// @Summary Get liveness status
-// @Description Check if the service is alive (for Kubernetes liveness probe)
-// @Tags health
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]any
-// @Router /health/live [get]
 func (hc *HealthController) GetLiveness(c echo.Context) error {
-	// Liveness check - always return OK unless the service is completely broken
 	return c.JSON(http.StatusOK, map[string]any{
 		"status": "alive",
 	})
 }
 
-// GetReadiness godoc
-// @Summary Get readiness status
-// @Description Check if the service is ready to accept traffic (for Kubernetes readiness probe)
-// @Tags health
-// @Accept json
-// @Produce json
-// @Success 200 {object} map[string]any
-// @Success 503 {object} map[string]any
-// @Router /health/ready [get]
 func (hc *HealthController) GetReadiness(c echo.Context) error {
-	// Run all health checks to determine readiness
 	report := hc.service.CheckAll(c.Request().Context())
 	
 	response := map[string]any{
@@ -95,41 +63,19 @@ func (hc *HealthController) GetReadiness(c echo.Context) error {
 	return c.JSON(http.StatusServiceUnavailable, response)
 }
 
-// GetDetailedHealth godoc
-// @Summary Get detailed health report
-// @Description Get detailed health report with all checks
-// @Tags health
-// @Accept json
-// @Produce json
-// @Success 200 {object} healthmodel.Report
-// @Success 503 {object} healthmodel.Report
-// @Router /health/detailed [get]
 func (hc *HealthController) GetDetailedHealth(c echo.Context) error {
 	report := hc.service.CheckAll(c.Request().Context())
 	
-	// Determine HTTP status based on health status
 	httpStatus := http.StatusOK
 	if report.GetStatus() == healthinterface.StatusDown {
 		httpStatus = http.StatusServiceUnavailable
 	} else if report.GetStatus() == healthinterface.StatusDegraded {
-		// Still return 200 for degraded status, but the status field indicates degradation
 		httpStatus = http.StatusOK
 	}
 	
 	return c.JSON(httpStatus, report)
 }
 
-// GetSpecificCheck godoc
-// @Summary Get specific health check
-// @Description Get the result of a specific health check
-// @Tags health
-// @Accept json
-// @Produce json
-// @Param name path string true "Check name"
-// @Success 200 {object} healthmodel.Check
-// @Failure 404 {object} core.ErrorResponse
-// @Failure 503 {object} healthmodel.Check
-// @Router /health/check/{name} [get]
 func (hc *HealthController) GetSpecificCheck(c echo.Context) error {
 	name := c.Param("name")
 	
@@ -138,7 +84,6 @@ func (hc *HealthController) GetSpecificCheck(c echo.Context) error {
 		return core.NotFound(c, fmt.Errorf("Health check not found"))
 	}
 	
-	// Determine HTTP status based on check status
 	httpStatus := http.StatusOK
 	if check.GetStatus() == healthinterface.StatusDown {
 		httpStatus = http.StatusServiceUnavailable

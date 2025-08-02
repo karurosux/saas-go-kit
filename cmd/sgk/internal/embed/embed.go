@@ -10,8 +10,6 @@ import (
 	"text/template"
 )
 
-// templatesFS holds all embedded template files
-//
 //go:embed templates
 var templatesFS embed.FS
 
@@ -36,70 +34,55 @@ type CRUDTemplateData struct {
 	ModuleNameCap string
 }
 
-// CopyModuleFromEmbed copies a module template from embedded filesystem
 func CopyModuleFromEmbed(moduleName string, data TemplateData) error {
-	// Destination module directory
 	moduleDir := filepath.Join("internal", moduleName)
 	if err := os.MkdirAll(moduleDir, 0755); err != nil {
 		return err
 	}
 
-	// Read from embedded templates
 	templatePath := fmt.Sprintf("templates/%s", moduleName)
 
-	// Walk through embedded files
 	err := fs.WalkDir(templatesFS, templatePath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		// Skip directories
 		if d.IsDir() {
 			return nil
 		}
 
-		// Get relative path from module root
 		relPath := strings.TrimPrefix(path, templatePath+"/")
 		destPath := filepath.Join(moduleDir, relPath)
 
-		// Create destination directory
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
 			return err
 		}
 
-		// Read file content
 		content, err := templatesFS.ReadFile(path)
 		if err != nil {
 			return err
 		}
 
-		// Check if it's a template file
 		if strings.HasSuffix(path, ".tmpl") {
-			// Remove .tmpl extension from destination
 			destPath = strings.TrimSuffix(destPath, ".tmpl")
 
-			// Parse and execute template
 			tmpl, err := template.New(filepath.Base(path)).Parse(string(content))
 			if err != nil {
 				return fmt.Errorf("failed to parse template %s: %w", path, err)
 			}
 
-			// Create destination file
 			destFile, err := os.Create(destPath)
 			if err != nil {
 				return err
 			}
 			defer destFile.Close()
 
-			// Execute template
 			if err := tmpl.Execute(destFile, data); err != nil {
 				return fmt.Errorf("failed to execute template %s: %w", path, err)
 			}
 		} else {
-			// For Go files, process template placeholders
 			if strings.HasSuffix(path, ".go") {
 				contentStr := string(content)
-				// Replace template placeholders
 				contentStr = strings.ReplaceAll(contentStr, "{{.Project.GoModule}}", data.Project.GoModule)
 				contentStr = strings.ReplaceAll(contentStr, "{{.Project.Name}}", data.Project.Name)
 				contentStr = strings.ReplaceAll(contentStr, "{{.Project.Database}}", data.Project.Database)
@@ -108,7 +91,6 @@ func CopyModuleFromEmbed(moduleName string, data TemplateData) error {
 				content = fixImportPaths(content, data.Project.GoModule)
 			}
 
-			// Write file
 			if err := os.WriteFile(destPath, content, 0644); err != nil {
 				return err
 			}
@@ -186,7 +168,6 @@ func CopyCRUDModuleFromEmbed(moduleName string, data CRUDTemplateData) error {
 	return err
 }
 
-// fixImportPaths replaces old saas-go-kit imports with relative project imports
 func fixImportPaths(content []byte, goModule string) []byte {
 	contentStr := string(content)
 	coreImport := fmt.Sprintf(`"%s/internal/core"`, goModule)
@@ -216,7 +197,6 @@ func fixImportPaths(content []byte, goModule string) []byte {
 				result = append(result, line)
 				coreImportSeen = true
 			}
-			// Skip duplicate core imports
 		} else {
 			result = append(result, line)
 		}

@@ -7,7 +7,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-// DefaultAuthConfig implements default auth configuration
 type DefaultAuthConfig struct {
 	jwtSecret                      string
 	jwtExpiration                  time.Duration
@@ -19,7 +18,6 @@ type DefaultAuthConfig struct {
 	phoneVerificationRequired      bool
 }
 
-// NewDefaultAuthConfig creates a new default auth config
 func NewDefaultAuthConfig() authinterface.AuthConfig {
 	return &DefaultAuthConfig{
 		jwtSecret:                      "your-secret-key", // Should be loaded from env

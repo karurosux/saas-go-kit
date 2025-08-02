@@ -7,10 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// InitProjectFunc is the function signature for initializing projects
 type InitProjectFunc func() error
 
-// InitCmd creates the init command
+func InitCmd(initProject InitProjectFunc) *cobra.Command {
 func InitCmd(initProject InitProjectFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",

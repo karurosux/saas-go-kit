@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// RoleRepository handles role persistence
 type RoleRepository interface {
 	Create(ctx context.Context, role Role) error
 	FindByID(ctx context.Context, id uuid.UUID) (Role, error)
@@ -17,7 +16,6 @@ type RoleRepository interface {
 	FindSystemRoles(ctx context.Context) ([]Role, error)
 }
 
-// UserRoleRepository handles user role assignments
 type UserRoleRepository interface {
 	AssignRole(ctx context.Context, userRole UserRole) error
 	UnassignRole(ctx context.Context, userID, roleID uuid.UUID) error

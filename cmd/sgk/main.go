@@ -38,14 +38,11 @@ Available modules: auth, subscription, team, notification, health, role, job, ss
 	}
 }
 
-// createNewProjectWithModules creates a new project with all dependencies properly handled
 func createNewProjectWithModules(projectName string, moduleList []string, goModule, database string) error {
-	// Create basic project structure
 	if err := project.CreateNewProject(projectName, moduleList, goModule, database); err != nil {
 		return err
 	}
 
-	// Store current directory and change to project directory
 	originalDir, err := os.Getwd()
 	if err != nil {
 		return err
@@ -56,12 +53,10 @@ func createNewProjectWithModules(projectName string, moduleList []string, goModu
 		return err
 	}
 
-	// Copy core templates
 	if err := embed.CopyCoreFromEmbed(); err != nil {
 		return fmt.Errorf("failed to copy core templates: %w", err)
 	}
 
-	// Add specified modules
 	for _, moduleName := range moduleList {
 		options := map[string]interface{}{
 			"database": database,
@@ -75,20 +70,16 @@ func createNewProjectWithModules(projectName string, moduleList []string, goModu
 	return nil
 }
 
-// addModuleWithAllDeps adds a single module with all dependencies handled
 func addModuleWithAllDeps(moduleName string, options map[string]interface{}) error {
-	// Validate module exists
 	if !modules.IsModuleAvailable(moduleName) {
 		return fmt.Errorf("unknown module '%s'. Run 'sgk list' to see available modules", moduleName)
 	}
 
-	// Load project config for template data
 	config, err := project.LoadProjectConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load project config: %w", err)
 	}
 
-	// Check if already installed
 	if config.Modules == nil {
 		config.Modules = make(map[string]project.ModuleInfo)
 	}
@@ -96,27 +87,21 @@ func addModuleWithAllDeps(moduleName string, options map[string]interface{}) err
 		return fmt.Errorf("module '%s' is already installed", moduleName)
 	}
 
-	// Get module definition
 	moduleDef, err := modules.GetModule(moduleName)
 	if err != nil {
 		return err
 	}
 
-	// Check and install internal dependencies
 	for _, dep := range moduleDef.InternalDependencies {
-		// Skip core modules (always available)
 		if dep == "core" {
 			continue
 		}
 		
-		// Check if dependency is already installed
 		if _, exists := config.Modules[dep]; !exists {
 			fmt.Printf("⚠️  Module %s requires %s. Installing it first...\n", moduleName, dep)
-			// Recursively install dependency
 			if err := addModuleWithAllDeps(dep, map[string]interface{}{}); err != nil {
 				return fmt.Errorf("failed to install dependency %s: %w", dep, err)
 			}
-			// Reload config after installing dependency
 			config, err = project.LoadProjectConfig()
 			if err != nil {
 				return fmt.Errorf("failed to reload project config: %w", err)
@@ -126,12 +111,10 @@ func addModuleWithAllDeps(moduleName string, options map[string]interface{}) err
 		}
 	}
 
-	// Set default route prefix
 	if options["route_prefix"] == "" {
 		options["route_prefix"] = fmt.Sprintf("/api/%s", moduleName)
 	}
 
-	// Create template data
 	templateData := embed.TemplateData{
 		Project: struct {
 			Name     string
@@ -149,23 +132,19 @@ func addModuleWithAllDeps(moduleName string, options map[string]interface{}) err
 		},
 	}
 
-	// Copy module files
 	if err := embed.CopyModuleFromEmbed(moduleName, templateData); err != nil {
 		return err
 	}
 
-	// Add module to project config
 	config.Modules[moduleName] = project.ModuleInfo{
 		Version:     moduleDef.Version,
 		InstalledAt: time.Now(),
 	}
 
-	// Save project config
 	if err := project.SaveProjectConfig(config); err != nil {
 		return fmt.Errorf("failed to save project config: %w", err)
 	}
 
-	// Update main.go to register the new module
 	if err := updateMainGoWithModule(config.Project.GoModule, moduleName); err != nil {
 		return fmt.Errorf("failed to update main.go: %w", err)
 	}
@@ -173,7 +152,6 @@ func addModuleWithAllDeps(moduleName string, options map[string]interface{}) err
 	return nil
 }
 
-// getStringOption safely gets a string option with a default value
 func getStringOption(options map[string]interface{}, key, defaultValue string) string {
 	if val, ok := options[key]; ok {
 		if str, ok := val.(string); ok {
@@ -183,11 +161,9 @@ func getStringOption(options map[string]interface{}, key, defaultValue string) s
 	return defaultValue
 }
 
-// listInstalledModulesFromConfig lists installed modules using project config
 func listInstalledModulesFromConfig() error {
 	config, err := project.LoadProjectConfig()
 	if err != nil {
-		// If config doesn't exist, no modules are installed
 		fmt.Println("📦 No modules installed yet.")
 		fmt.Println("Run 'sgk init' to initialize a project, then 'sgk add <module>' to install modules.")
 		return nil
@@ -211,9 +187,7 @@ func listInstalledModulesFromConfig() error {
 	return nil
 }
 
-// updateMainGoWithModule updates the main.go file to register a new module
 func updateMainGoWithModule(goModule, moduleName string) error {
-	// Read existing main.go
 	mainPath := "main.go"
 	content, err := os.ReadFile(mainPath)
 	if err != nil {
@@ -222,21 +196,15 @@ func updateMainGoWithModule(goModule, moduleName string) error {
 
 	mainContent := string(content)
 
-	// Check if module is already imported
 	moduleImport := fmt.Sprintf(`"%s/internal/%s"`, goModule, moduleName)
 	if strings.Contains(mainContent, moduleImport) {
-		// Module already registered
 		return nil
 	}
 
-	// Find the imports section and add module import in the right place
-	// Look for the pattern of external imports followed by internal imports
 	importPattern := `"gorm.io/gorm"`
 	
-	// Check if there are already internal module imports
 	coreImport := fmt.Sprintf(`"%s/internal/core"`, goModule)
 	if strings.Contains(mainContent, coreImport) {
-		// Add after the last internal import
 		internalImports := []string{}
 		lines := strings.Split(mainContent, "\n")
 		for _, line := range lines {
@@ -249,7 +217,6 @@ func updateMainGoWithModule(goModule, moduleName string) error {
 			mainContent = strings.Replace(mainContent, lastImport, lastImport+"\n\t"+moduleImport, 1)
 		}
 	} else {
-		// Add after gorm import with proper spacing
 		importReplacement := fmt.Sprintf(`"gorm.io/gorm"
 	
 	"%s/internal/core"
@@ -257,48 +224,40 @@ func updateMainGoWithModule(goModule, moduleName string) error {
 		mainContent = strings.Replace(mainContent, importPattern, importReplacement, 1)
 	}
 
-	// Add module registration
 	registrationMarker := "// Register modules"
 	moduleRegistration := fmt.Sprintf(`	if err := %s.RegisterModule(container); err != nil {
 		log.Fatalf(core.ErrMsgModuleRegistration, "%s", err)
 	}`, moduleName, moduleName)
 	
-	// Find the position after "// Register modules" and any existing registrations
 	markerPos := strings.Index(mainContent, registrationMarker)
 	if markerPos == -1 {
 		return fmt.Errorf("could not find '// Register modules' marker in main.go")
 	}
 	
-	// Find where to insert the new registration - always after existing registrations
 	afterMarker := mainContent[markerPos:]
 	lines := strings.Split(afterMarker, "\n")
 	insertLine := 1 // Default to line after marker
 	
-	// Find the last existing registration to insert after it
 	inRegistrationBlock := false
 	for i := 1; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
 		
-		// Check if we're entering a registration block
 		if strings.Contains(line, "if err := ") && strings.Contains(line, ".RegisterModule(container)") {
 			inRegistrationBlock = true
 			continue
 		}
 		
-		// Check if we're exiting a registration block (closing brace)
 		if inRegistrationBlock && line == "}" {
 			insertLine = i + 1
 			inRegistrationBlock = false
 			continue
 		}
 		
-		// If we hit a non-registration line and we're not in a block, we're done
 		if !inRegistrationBlock && line != "" && !strings.Contains(line, "log.Fatalf") && insertLine > 1 {
 			break
 		}
 	}
 	
-	// Insert the new registration
 	newLines := make([]string, 0, len(lines)+1)
 	newLines = append(newLines, lines[:insertLine]...)
 	newLines = append(newLines, moduleRegistration)
@@ -306,7 +265,6 @@ func updateMainGoWithModule(goModule, moduleName string) error {
 	
 	mainContent = mainContent[:markerPos] + strings.Join(newLines, "\n")
 
-	// Write updated main.go
 	if err := os.WriteFile(mainPath, []byte(mainContent), 0644); err != nil {
 		return fmt.Errorf("failed to write main.go: %w", err)
 	}

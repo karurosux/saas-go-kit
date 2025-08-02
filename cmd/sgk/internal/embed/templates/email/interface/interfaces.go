@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// EmailMessage represents an email to be sent
 type EmailMessage struct {
 	ID          uint                   `json:"id"`
 	To          []string              `json:"to"`
@@ -28,14 +27,12 @@ type EmailMessage struct {
 	UpdatedAt   time.Time             `json:"updated_at"`
 }
 
-// Attachment represents an email attachment
 type Attachment struct {
 	Filename    string `json:"filename"`
 	ContentType string `json:"content_type"`
 	Data        []byte `json:"data"`
 }
 
-// EmailPriority defines email priority levels
 type EmailPriority int
 
 const (
@@ -44,7 +41,6 @@ const (
 	PriorityHigh
 )
 
-// EmailStatus defines email sending status
 type EmailStatus string
 
 const (
@@ -54,13 +50,11 @@ const (
 	StatusFailed  EmailStatus = "failed"
 )
 
-// EmailSender defines the interface for sending emails
 type EmailSender interface {
 	Send(ctx context.Context, message *EmailMessage) error
 	SendBatch(ctx context.Context, messages []*EmailMessage) error
 }
 
-// EmailTemplate represents an email template
 type EmailTemplate struct {
 	ID        uint      `json:"id"`
 	Name      string    `json:"name"`
@@ -73,7 +67,6 @@ type EmailTemplate struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-// TemplateManager defines the interface for managing email templates
 type TemplateManager interface {
 	GetTemplate(ctx context.Context, name string) (*EmailTemplate, error)
 	CreateTemplate(ctx context.Context, template *EmailTemplate) error
@@ -83,7 +76,6 @@ type TemplateManager interface {
 	RenderTemplate(ctx context.Context, name string, data map[string]interface{}) (subject, body, html string, err error)
 }
 
-// EmailQueue defines the interface for email queue operations
 type EmailQueue interface {
 	Enqueue(ctx context.Context, message *EmailMessage) error
 	Dequeue(ctx context.Context, limit int) ([]*EmailMessage, error)
@@ -93,7 +85,6 @@ type EmailQueue interface {
 	GetStatus(ctx context.Context, id uint) (*EmailMessage, error)
 }
 
-// TemplateRepository defines the interface for template storage
 type TemplateRepository interface {
 	GetTemplate(ctx context.Context, name string) (*EmailTemplate, error)
 	CreateTemplate(ctx context.Context, template *EmailTemplate) error
@@ -102,7 +93,6 @@ type TemplateRepository interface {
 	ListTemplates(ctx context.Context) ([]*EmailTemplate, error)
 }
 
-// EmailService defines the main email service interface
 type EmailService interface {
 	Send(ctx context.Context, to []string, subject, body string) error
 	SendHTML(ctx context.Context, to []string, subject, body, html string) error

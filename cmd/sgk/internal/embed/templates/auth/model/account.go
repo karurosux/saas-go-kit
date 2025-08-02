@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Account represents a user account
 type Account struct {
 	ID            uuid.UUID `json:"id" gorm:"type:uuid;primary_key;default:gen_random_uuid()"`
 	Email         string    `json:"email" gorm:"uniqueIndex;not null"`

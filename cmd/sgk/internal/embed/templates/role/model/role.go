@@ -61,7 +61,6 @@ func (r *DefaultRole) HasPermission(permission string) bool {
 		if p == permission || p == "*" {
 			return true
 		}
-		// Check wildcard permissions (e.g., "users:*" matches "users:read")
 		if strings.HasSuffix(p, ":*") && strings.HasPrefix(permission, strings.TrimSuffix(p, "*")) {
 			return true
 		}

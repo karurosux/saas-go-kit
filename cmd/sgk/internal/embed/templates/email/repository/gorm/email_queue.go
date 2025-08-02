@@ -8,17 +8,14 @@ import (
 	emailinterface "{{.Project.GoModule}}/internal/email/interface"
 )
 
-// EmailQueueRepository implements EmailQueue using GORM
 type EmailQueueRepository struct {
 	db *gorm.DB
 }
 
-// NewEmailQueueRepository creates a new email queue repository
 func NewEmailQueueRepository(db *gorm.DB) *EmailQueueRepository {
 	return &EmailQueueRepository{db: db}
 }
 
-// Enqueue adds an email to the queue
 func (r *EmailQueueRepository) Enqueue(ctx context.Context, message *emailinterface.EmailMessage) error {
 	if message.Status == "" {
 		message.Status = emailinterface.StatusPending
@@ -33,7 +30,6 @@ func (r *EmailQueueRepository) Enqueue(ctx context.Context, message *emailinterf
 	return r.db.WithContext(ctx).Create(message).Error
 }
 
-// Dequeue retrieves pending emails from the queue
 func (r *EmailQueueRepository) Dequeue(ctx context.Context, limit int) ([]*emailinterface.EmailMessage, error) {
 	var messages []*emailinterface.EmailMessage
 	
@@ -47,7 +43,6 @@ func (r *EmailQueueRepository) Dequeue(ctx context.Context, limit int) ([]*email
 		return nil, err
 	}
 	
-	// Mark messages as sending
 	for _, msg := range messages {
 		r.db.WithContext(ctx).
 			Model(msg).
@@ -57,7 +52,6 @@ func (r *EmailQueueRepository) Dequeue(ctx context.Context, limit int) ([]*email
 	return messages, nil
 }
 
-// MarkAsSent marks an email as successfully sent
 func (r *EmailQueueRepository) MarkAsSent(ctx context.Context, id uint) error {
 	now := time.Now()
 	return r.db.WithContext(ctx).
@@ -69,7 +63,6 @@ func (r *EmailQueueRepository) MarkAsSent(ctx context.Context, id uint) error {
 		}).Error
 }
 
-// MarkAsFailed marks an email as failed
 func (r *EmailQueueRepository) MarkAsFailed(ctx context.Context, id uint, err error) error {
 	var message emailinterface.EmailMessage
 	if err := r.db.WithContext(ctx).First(&message, id).Error; err != nil {
@@ -79,7 +72,6 @@ func (r *EmailQueueRepository) MarkAsFailed(ctx context.Context, id uint, err er
 	message.Attempts++
 	message.Error = err.Error()
 	
-	// If max attempts reached, mark as failed
 	if message.Attempts >= message.MaxAttempts {
 		message.Status = emailinterface.StatusFailed
 	} else {
@@ -89,7 +81,6 @@ func (r *EmailQueueRepository) MarkAsFailed(ctx context.Context, id uint, err er
 	return r.db.WithContext(ctx).Save(&message).Error
 }
 
-// RetryFailed retries failed emails
 func (r *EmailQueueRepository) RetryFailed(ctx context.Context) error {
 	return r.db.WithContext(ctx).
 		Model(&emailinterface.EmailMessage{}).
@@ -101,7 +92,6 @@ func (r *EmailQueueRepository) RetryFailed(ctx context.Context) error {
 		}).Error
 }
 
-// GetStatus retrieves the status of an email
 func (r *EmailQueueRepository) GetStatus(ctx context.Context, id uint) (*emailinterface.EmailMessage, error) {
 	var message emailinterface.EmailMessage
 	err := r.db.WithContext(ctx).First(&message, id).Error

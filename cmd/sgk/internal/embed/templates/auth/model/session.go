@@ -6,7 +6,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// Session represents a user session
 type Session struct {
 	UserID             uuid.UUID `json:"user_id"`
 	Token              string    `json:"token"`
@@ -35,12 +34,10 @@ func (s *Session) GetRefreshExpiresAt() time.Time {
 	return s.RefreshExpiresAt
 }
 
-// IsExpired checks if the session token has expired
 func (s *Session) IsExpired() bool {
 	return time.Now().After(s.ExpiresAt)
 }
 
-// IsRefreshExpired checks if the refresh token has expired
 func (s *Session) IsRefreshExpired() bool {
 	return time.Now().After(s.RefreshExpiresAt)
 }
