@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/karurosux/saas-go-kit/cmd/sgk/commands"
+	"github.com/karurosux/saas-go-kit/cmd/sgk/internal/crud"
 	"github.com/karurosux/saas-go-kit/cmd/sgk/internal/embed"
 	"github.com/karurosux/saas-go-kit/cmd/sgk/internal/modules"
 	"github.com/karurosux/saas-go-kit/cmd/sgk/internal/project"
@@ -24,14 +25,12 @@ Similar to shadcn/ui, you own the code and can modify it as needed.
 Available modules: auth, subscription, team, notification, health, role, job, sse, container`,
 	}
 
-	// Add all commands with dependency injection to avoid circular imports
 	rootCmd.AddCommand(commands.NewCmd(createNewProjectWithModules))
 	rootCmd.AddCommand(commands.InitCmd(project.InitProject))
 	rootCmd.AddCommand(commands.AddCmd(addModuleWithAllDeps))
 	rootCmd.AddCommand(commands.ListCmd(modules.ListAvailableModules, listInstalledModulesFromConfig))
-	rootCmd.AddCommand(commands.RemoveCmd(modules.RemoveModule))
 	rootCmd.AddCommand(commands.UpdateCmd(modules.UpdateModule))
-	rootCmd.AddCommand(commands.GenerateCmd(embed.GenerateClients))
+	rootCmd.AddCommand(commands.CrudCmd(crud.GenerateCRUDModule))
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

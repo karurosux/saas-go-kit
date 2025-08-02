@@ -27,6 +27,16 @@ type TemplateData struct {
 	}
 }
 
+type CRUDTemplateData struct {
+	Project struct {
+		Name     string
+		GoModule string
+		Database string
+	}
+	ModuleName    string
+	ModuleNameCap string
+}
+
 // CopyModuleFromEmbed copies a module template from embedded filesystem
 func CopyModuleFromEmbed(moduleName string, data TemplateData) error {
 	// Destination module directory
@@ -103,6 +113,72 @@ func CopyModuleFromEmbed(moduleName string, data TemplateData) error {
 			if err := os.WriteFile(destPath, content, 0644); err != nil {
 				return err
 			}
+		}
+
+		return nil
+	})
+
+	return err
+}
+
+func CopyCRUDModuleFromEmbed(moduleName string, data CRUDTemplateData) error {
+	moduleDir := filepath.Join("internal", moduleName)
+	if err := os.MkdirAll(moduleDir, 0755); err != nil {
+		return err
+	}
+
+	templatePath := "templates/crud"
+	
+	err := fs.WalkDir(templatesFS, templatePath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if d.IsDir() {
+			return nil
+		}
+
+		relPath := strings.TrimPrefix(path, templatePath+"/")
+		
+		if strings.Contains(relPath, "entity.go") {
+			relPath = strings.Replace(relPath, "entity.go", moduleName+".go", 1)
+		}
+		if strings.Contains(relPath, "interfaces.go") {
+			relPath = strings.Replace(relPath, "interfaces.go", moduleName+".go", 1)
+		}
+		if strings.Contains(relPath, "repository.go") {
+			relPath = strings.Replace(relPath, "repository.go", moduleName+"_repository.go", 1)
+		}
+		if strings.Contains(relPath, "service.go") {
+			relPath = strings.Replace(relPath, "service.go", moduleName+"_service.go", 1)
+		}
+		if strings.Contains(relPath, "controller.go") {
+			relPath = strings.Replace(relPath, "controller.go", moduleName+"_controller.go", 1)
+		}
+		
+		destPath := filepath.Join(moduleDir, relPath)
+
+		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+			return err
+		}
+
+		content, err := templatesFS.ReadFile(path)
+		if err != nil {
+			return err
+		}
+
+		if strings.HasSuffix(path, ".go") {
+			contentStr := string(content)
+			contentStr = strings.ReplaceAll(contentStr, "{{.ModuleName}}", data.ModuleName)
+			contentStr = strings.ReplaceAll(contentStr, "{{.ModuleNameCap}}", data.ModuleNameCap)
+			contentStr = strings.ReplaceAll(contentStr, "{{.Project.GoModule}}", data.Project.GoModule)
+			contentStr = strings.ReplaceAll(contentStr, "{{.Project.Name}}", data.Project.Name)
+			contentStr = strings.ReplaceAll(contentStr, "{{.Project.Database}}", data.Project.Database)
+			content = []byte(contentStr)
+		}
+		
+		if err := os.WriteFile(destPath, content, 0644); err != nil {
+			return err
 		}
 
 		return nil
