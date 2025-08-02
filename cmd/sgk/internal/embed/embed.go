@@ -15,7 +15,6 @@ import (
 //go:embed templates
 var templatesFS embed.FS
 
-// TemplateData represents data passed to templates
 type TemplateData struct {
 	Project struct {
 		Name     string
@@ -45,9 +44,9 @@ func CopyModuleFromEmbed(moduleName string, data TemplateData) error {
 		return err
 	}
 
-	// Read from embedded templates  
+	// Read from embedded templates
 	templatePath := fmt.Sprintf("templates/%s", moduleName)
-	
+
 	// Walk through embedded files
 	err := fs.WalkDir(templatesFS, templatePath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -78,7 +77,7 @@ func CopyModuleFromEmbed(moduleName string, data TemplateData) error {
 		if strings.HasSuffix(path, ".tmpl") {
 			// Remove .tmpl extension from destination
 			destPath = strings.TrimSuffix(destPath, ".tmpl")
-			
+
 			// Parse and execute template
 			tmpl, err := template.New(filepath.Base(path)).Parse(string(content))
 			if err != nil {
@@ -108,7 +107,7 @@ func CopyModuleFromEmbed(moduleName string, data TemplateData) error {
 				content = []byte(contentStr)
 				content = fixImportPaths(content, data.Project.GoModule)
 			}
-			
+
 			// Write file
 			if err := os.WriteFile(destPath, content, 0644); err != nil {
 				return err
@@ -128,7 +127,7 @@ func CopyCRUDModuleFromEmbed(moduleName string, data CRUDTemplateData) error {
 	}
 
 	templatePath := "templates/crud"
-	
+
 	err := fs.WalkDir(templatesFS, templatePath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -139,7 +138,7 @@ func CopyCRUDModuleFromEmbed(moduleName string, data CRUDTemplateData) error {
 		}
 
 		relPath := strings.TrimPrefix(path, templatePath+"/")
-		
+
 		if strings.Contains(relPath, "entity.go") {
 			relPath = strings.Replace(relPath, "entity.go", moduleName+".go", 1)
 		}
@@ -155,7 +154,7 @@ func CopyCRUDModuleFromEmbed(moduleName string, data CRUDTemplateData) error {
 		if strings.Contains(relPath, "controller.go") {
 			relPath = strings.Replace(relPath, "controller.go", moduleName+"_controller.go", 1)
 		}
-		
+
 		destPath := filepath.Join(moduleDir, relPath)
 
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
@@ -176,7 +175,7 @@ func CopyCRUDModuleFromEmbed(moduleName string, data CRUDTemplateData) error {
 			contentStr = strings.ReplaceAll(contentStr, "{{.Project.Database}}", data.Project.Database)
 			content = []byte(contentStr)
 		}
-		
+
 		if err := os.WriteFile(destPath, content, 0644); err != nil {
 			return err
 		}
@@ -191,10 +190,9 @@ func CopyCRUDModuleFromEmbed(moduleName string, data CRUDTemplateData) error {
 func fixImportPaths(content []byte, goModule string) []byte {
 	contentStr := string(content)
 	coreImport := fmt.Sprintf(`"%s/internal/core"`, goModule)
-	
-	// Define module-specific import mappings
+
 	importMap := map[string]string{
-		`"github.com/karurosux/saas-go-kit/core-go"`:      coreImport,
+		`"github.com/karurosux/saas-go-kit/core"`:         coreImport,
 		`"github.com/karurosux/saas-go-kit/errors-go"`:    coreImport,
 		`"github.com/karurosux/saas-go-kit/response-go"`:  coreImport,
 		`"github.com/karurosux/saas-go-kit/validator-go"`: coreImport,
@@ -202,17 +200,15 @@ func fixImportPaths(content []byte, goModule string) []byte {
 		`"github.com/karurosux/saas-go-kit/auth-go"`:      fmt.Sprintf(`"%s/internal/auth"`, goModule),
 		`"github.com/karurosux/saas-go-kit/role-go"`:      fmt.Sprintf(`"%s/internal/role"`, goModule),
 	}
-	
-	// Replace imports according to mapping
+
 	for oldImport, newImport := range importMap {
 		contentStr = strings.ReplaceAll(contentStr, oldImport, newImport)
 	}
-	
-	// Then, remove duplicate imports by ensuring only one core import line exists
+
 	lines := strings.Split(contentStr, "\n")
 	var result []string
 	coreImportSeen := false
-	
+
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == coreImport {
@@ -225,18 +221,16 @@ func fixImportPaths(content []byte, goModule string) []byte {
 			result = append(result, line)
 		}
 	}
-	
+
 	return []byte(strings.Join(result, "\n"))
 }
 
-// CopyCoreFromEmbed copies core utilities from embedded filesystem
 func CopyCoreFromEmbed() error {
 	destDir := filepath.Join("internal", "core")
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return err
 	}
 
-	// Read all files from templates/core  
 	corePath := "templates/core"
 	entries, err := templatesFS.ReadDir(corePath)
 	if err != nil {
@@ -248,13 +242,11 @@ func CopyCoreFromEmbed() error {
 			continue
 		}
 
-		// Read file content
 		content, err := templatesFS.ReadFile(filepath.Join(corePath, entry.Name()))
 		if err != nil {
 			return err
 		}
 
-		// Write file
 		destPath := filepath.Join(destDir, entry.Name())
 		if err := os.WriteFile(destPath, content, 0644); err != nil {
 			return err
@@ -264,14 +256,6 @@ func CopyCoreFromEmbed() error {
 	return nil
 }
 
-// GenerateClients generates TypeScript clients
-func GenerateClients() error {
-	// TODO: Integrate with existing client generation
-	fmt.Println("Generating TypeScript clients...")
-	return nil
-}
-
-// ReadEmbeddedFile reads a file from the embedded filesystem
 func ReadEmbeddedFile(path string) (string, error) {
 	content, err := templatesFS.ReadFile(path)
 	if err != nil {

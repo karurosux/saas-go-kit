@@ -134,8 +134,7 @@ func (m *ModuleMetadata) CheckDependencies() error {
 	for moduleName, module := range m.Modules {
 		for _, dep := range module.InternalDependencies {
 			// Skip core dependencies (they're always available)
-			if dep == "core-go" || dep == "errors-go" || dep == "response-go" || 
-			   dep == "validator-go" || dep == "container-go" {
+			if dep == "core" {
 				continue
 			}
 			

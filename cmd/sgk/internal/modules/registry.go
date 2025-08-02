@@ -48,11 +48,8 @@ var availableModules = map[string]ModuleDefinition{
 			"golang.org/x/crypto",
 		},
 		InternalDependencies: []string{
-			"core-go",
-			"errors-go",
-			"response-go",
-			"validator-go",
-			"container-go",
+			"core",
+			"email",
 		},
 		ContainerServices: map[string]string{
 			"echo":         "echo.Echo",
@@ -78,11 +75,7 @@ var availableModules = map[string]ModuleDefinition{
 			"github.com/stripe/stripe-go/v76",
 		},
 		InternalDependencies: []string{
-			"core-go",
-			"errors-go",
-			"response-go",
-			"validator-go",
-			"container-go",
+			"core",
 		},
 		ContainerServices: map[string]string{
 			"echo": "echo.Echo",
@@ -108,13 +101,9 @@ var availableModules = map[string]ModuleDefinition{
 		Description: "Team management with role-based access control",
 		Dependencies: []string{},
 		InternalDependencies: []string{
-			"core-go",
-			"errors-go",
-			"response-go",
-			"validator-go",
-			"container-go",
+			"core",
 			"auth",
-			"role-go",
+			"role",
 		},
 		ContainerServices: map[string]string{
 			"echo":         "echo.Echo",
@@ -142,11 +131,7 @@ var availableModules = map[string]ModuleDefinition{
 			"gopkg.in/gomail.v2",
 		},
 		InternalDependencies: []string{
-			"core-go",
-			"errors-go",
-			"response-go",
-			"validator-go",
-			"container-go",
+			"core",
 		},
 		ContainerServices: map[string]string{
 			"echo": "echo.Echo",
@@ -165,11 +150,7 @@ var availableModules = map[string]ModuleDefinition{
 		Description: "Application health monitoring with multiple check types",
 		Dependencies: []string{},
 		InternalDependencies: []string{
-			"core-go",
-			"errors-go",
-			"response-go",
-			"validator-go",
-			"container-go",
+			"core",
 		},
 		ContainerServices: map[string]string{
 			"echo": "echo.Echo",
@@ -189,11 +170,7 @@ var availableModules = map[string]ModuleDefinition{
 		Description: "Role-based access control and permissions management",
 		Dependencies: []string{},
 		InternalDependencies: []string{
-			"core-go",
-			"errors-go",
-			"response-go",
-			"validator-go",
-			"container-go",
+			"core",
 		},
 		ContainerServices: map[string]string{
 			"echo": "echo.Echo",
@@ -216,11 +193,7 @@ var availableModules = map[string]ModuleDefinition{
 		Description: "Background job processing system",
 		Dependencies: []string{},
 		InternalDependencies: []string{
-			"core-go",
-			"errors-go",
-			"response-go",
-			"validator-go",
-			"container-go",
+			"core",
 		},
 		ContainerServices: map[string]string{
 			"echo": "echo.Echo",
@@ -245,11 +218,7 @@ var availableModules = map[string]ModuleDefinition{
 		Description: "Server-sent events for real-time communication",
 		Dependencies: []string{},
 		InternalDependencies: []string{
-			"core-go",
-			"errors-go",
-			"response-go",
-			"validator-go",
-			"container-go",
+			"core",
 		},
 		ContainerServices: map[string]string{
 			"echo": "echo.Echo",
@@ -265,12 +234,37 @@ var availableModules = map[string]ModuleDefinition{
 		Description: "Dependency injection container",
 		Dependencies: []string{},
 		InternalDependencies: []string{
-			"core-go",
+			"core",
 		},
 		ContainerServices: map[string]string{},
 		Files: []string{
 			"container.go",
 			"interfaces.go",
+		},
+	},
+	"email": {
+		Name:        "email",
+		Version:     "1.0.0",
+		Description: "Email service with SMTP support, template management, and queue processing",
+		Dependencies: []string{},
+		InternalDependencies: []string{
+			"core",
+		},
+		ContainerServices: map[string]string{
+			"echo": "echo.Echo",
+			"db":   "gorm.DB",
+		},
+		Files: []string{
+			"interface/interfaces.go",
+			"service/email_service.go",
+			"service/smtp_sender.go", 
+			"service/mock_sender.go",
+			"service/template_manager.go",
+			"controller/email_controller.go",
+			"repository/gorm/email_queue.go",
+			"repository/gorm/template_repository.go",
+			"repository/gorm/migrations.go",
+			"module.go",
 		},
 	},
 }

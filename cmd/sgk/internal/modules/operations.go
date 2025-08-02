@@ -38,8 +38,7 @@ func AddModuleWithOptions(moduleName string, options map[string]interface{}, upd
 	// Check internal dependencies
 	for _, dep := range moduleDef.InternalDependencies {
 		// Skip core modules (always available)
-		if dep == "core-go" || dep == "errors-go" || dep == "response-go" || 
-		   dep == "validator-go" || dep == "container-go" {
+		if dep == "core" {
 			continue
 		}
 		

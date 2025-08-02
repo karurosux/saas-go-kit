@@ -102,6 +102,30 @@ func addModuleWithAllDeps(moduleName string, options map[string]interface{}) err
 		return err
 	}
 
+	// Check and install internal dependencies
+	for _, dep := range moduleDef.InternalDependencies {
+		// Skip core modules (always available)
+		if dep == "core" {
+			continue
+		}
+		
+		// Check if dependency is already installed
+		if _, exists := config.Modules[dep]; !exists {
+			fmt.Printf("⚠️  Module %s requires %s. Installing it first...\n", moduleName, dep)
+			// Recursively install dependency
+			if err := addModuleWithAllDeps(dep, map[string]interface{}{}); err != nil {
+				return fmt.Errorf("failed to install dependency %s: %w", dep, err)
+			}
+			// Reload config after installing dependency
+			config, err = project.LoadProjectConfig()
+			if err != nil {
+				return fmt.Errorf("failed to reload project config: %w", err)
+			}
+		} else {
+			fmt.Printf("✅ Module %s dependency %s is already installed\n", moduleName, dep)
+		}
+	}
+
 	// Set default route prefix
 	if options["route_prefix"] == "" {
 		options["route_prefix"] = fmt.Sprintf("/api/%s", moduleName)
@@ -236,7 +260,7 @@ func updateMainGoWithModule(goModule, moduleName string) error {
 	// Add module registration
 	registrationMarker := "// Register modules"
 	moduleRegistration := fmt.Sprintf(`	if err := %s.RegisterModule(container); err != nil {
-		log.Fatalf("Failed to register %s module: %%v", err)
+		log.Fatalf(core.ErrMsgModuleRegistration, "%s", err)
 	}`, moduleName, moduleName)
 	
 	// Find the position after "// Register modules" and any existing registrations

@@ -35,7 +35,7 @@ func NewCmd(createProject NewProjectFunc) *cobra.Command {
 	}
 
 	// Add flags
-	cmd.Flags().StringSlice("modules", []string{"auth"}, "Modules to include (auth,subscription,team,etc)")
+	cmd.Flags().StringSlice("modules", []string{}, "Modules to include (auth,subscription,team,etc)")
 	cmd.Flags().String("go-module", "", "Go module path (defaults to project name)")
 	cmd.Flags().String("database", "postgres", "Database type (postgres, mysql, sqlite)")
 
