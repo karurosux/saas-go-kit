@@ -42,7 +42,7 @@ func RegisterModule(container *core.Container) error {
 	e := do.MustInvoke[*echo.Echo](container)
 	controller := do.MustInvoke[*{{.ModuleName}}controller.{{.ModuleNameCap}}Controller](container)
 	
-	controller.RegisterRoutes(e, "/{{.ModuleName}}s")
+	controller.RegisterRoutes(e, "/api/v1/{{.ModuleName}}s")
 	
 	return nil
 }

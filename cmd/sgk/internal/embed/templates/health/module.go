@@ -2,15 +2,14 @@ package health
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
-	
-	"github.com/samber/do"
+
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
+	"github.com/samber/do"
 	"gorm.io/gorm"
-	
+
 	"{{.Project.GoModule}}/internal/core"
 	healthcheckers "{{.Project.GoModule}}/internal/health/checkers"
 	healthconstants "{{.Project.GoModule}}/internal/health/constants"
@@ -28,20 +27,20 @@ func ProvideHealthService(i *do.Injector) (healthinterface.HealthService, error)
 	if version == "" {
 		version = "1.0.0"
 	}
-	
+
 	healthService := healthservice.NewHealthService(version)
-	
+
 	// Register database checker
 	db := do.MustInvoke[*gorm.DB](i)
 	dbChecker := healthcheckers.NewDatabaseChecker(db, true) // Critical
 	healthService.RegisterChecker(dbChecker)
-	
+
 	// Register Redis checker if Redis is available
 	if redisClient, err := do.Invoke[*redis.Client](i); err == nil {
 		redisChecker := healthcheckers.NewRedisChecker(redisClient, false) // Non-critical
 		healthService.RegisterChecker(redisChecker)
 	}
-	
+
 	// Register disk space checker
 	diskPath := os.Getenv("HEALTH_CHECK_DISK_PATH")
 	if diskPath == "" {
@@ -50,19 +49,19 @@ func ProvideHealthService(i *do.Injector) (healthinterface.HealthService, error)
 	diskThreshold := 90.0 // Can be configured via env
 	diskChecker := healthcheckers.NewDiskSpaceChecker(diskPath, diskThreshold, false)
 	healthService.RegisterChecker(diskChecker)
-	
+
 	// Register memory checker
 	memoryThreshold := 80.0 // Can be configured via env
 	memoryChecker := healthcheckers.NewMemoryChecker(memoryThreshold, false)
 	healthService.RegisterChecker(memoryChecker)
-	
+
 	// Register external service checkers if configured
 	if externalHealthURL := os.Getenv("EXTERNAL_SERVICE_HEALTH_URL"); externalHealthURL != "" {
 		httpChecker := healthcheckers.NewHTTPChecker("external_service", externalHealthURL, false)
 		httpChecker.SetTimeout(5 * time.Second)
 		healthService.RegisterChecker(httpChecker)
 	}
-	
+
 	return healthService, nil
 }
 
@@ -77,12 +76,12 @@ func RegisterModule(container *core.Container) error {
 	// Register health services
 	do.Provide(container, ProvideHealthService)
 	do.Provide(container, ProvideHealthController)
-	
+
 	// Register routes
 	e := do.MustInvoke[*echo.Echo](container)
 	healthController := do.MustInvoke[*healthcontroller.HealthController](container)
-	healthController.RegisterRoutes(e, "/health")
-	
+	healthController.RegisterRoutes(e, "/api/v1/health")
+
 	// Start periodic health checks
 	healthService := do.MustInvoke[healthinterface.HealthService](container)
 	checkInterval := healthconstants.DefaultPeriodicInterval
@@ -91,9 +90,9 @@ func RegisterModule(container *core.Container) error {
 			checkInterval = interval
 		}
 	}
-	
+
 	ctx := context.Background()
 	healthService.StartPeriodicChecks(ctx, checkInterval)
-	
+
 	return nil
 }

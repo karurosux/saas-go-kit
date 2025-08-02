@@ -76,7 +76,7 @@ func RegisterModule(container *core.Container) error {
 	roleController := do.MustInvoke[*rolecontroller.RoleController](container)
 	rbacMiddleware := do.MustInvoke[*rolemiddleware.RBACMiddleware](container)
 	
-	roleController.RegisterRoutes(e, "/roles", rbacMiddleware)
+	roleController.RegisterRoutes(e, "/api/v1/roles", rbacMiddleware)
 	
 	return nil
 }

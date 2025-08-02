@@ -145,7 +145,7 @@ func RegisterModule(container *core.Container) error {
 	authController := do.MustInvoke[*authcontroller.AuthController](container)
 	authMiddleware := do.MustInvoke[*authmiddleware.AuthMiddleware](container)
 	
-	authController.RegisterRoutes(e, "/auth", authMiddleware)
+	authController.RegisterRoutes(e, "/api/v1/auth", authMiddleware)
 	
 	return nil
 }
