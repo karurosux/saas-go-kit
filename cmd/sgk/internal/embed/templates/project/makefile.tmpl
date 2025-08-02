@@ -1,0 +1,128 @@
+.PHONY: help setup build run clean test lint fmt deps-up deps-down migrate-up migrate-down
+help: ## Show this help message
+	@echo "Available commands:"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
+
+setup: ## Set up the development environment
+	@echo "🚀 Setting up development environment..."
+	@if [ ! -f .env ]; then cp .env.example .env && echo "📝 Created .env from .env.example - please review and update"; fi
+	@make deps-up
+	@make deps
+	@echo "✅ Setup complete! Run 'make run' to start the application"
+
+deps: ## Download and tidy Go dependencies
+	@echo "📦 Installing Go dependencies..."
+	@go mod download
+	@go mod tidy
+
+deps-up: ## Start database and Redis services
+	@echo "🐳 Starting dependencies..."
+	@docker compose up -d
+
+deps-down: ## Stop database and Redis services
+	@echo "🛑 Stopping dependencies..."
+	@docker compose down
+
+deps-logs: ## Show logs from dependencies
+	@docker compose logs -f
+
+build: ## Build the application binary
+	@echo "🔨 Building application..."
+	@go build -o bin/{{.ProjectName}} main.go
+	@echo "✅ Built binary: bin/{{.ProjectName}}"
+
+build-linux: ## Build the application binary for Linux
+	@echo "🔨 Building for Linux..."
+	@GOOS=linux GOARCH=amd64 go build -o bin/{{.ProjectName}}-linux main.go
+	@echo "✅ Built Linux binary: bin/{{.ProjectName}}-linux"
+
+run: ## Run the application in development mode
+	@echo "🏃 Starting {{.ProjectName}}..."
+	@go run main.go
+
+run-bin: build ## Build and run the binary
+	@echo "🏃 Running built binary..."
+	@./bin/{{.ProjectName}}
+
+test: ## Run tests
+	@echo "🧪 Running tests..."
+	@go test -v ./...
+
+test-coverage: ## Run tests with coverage
+	@echo "🧪 Running tests with coverage..."
+	@go test -v -coverprofile=coverage.out ./...
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "📊 Coverage report generated: coverage.html"
+
+lint: ## Run linter (requires golangci-lint)
+	@echo "🔍 Running linter..."
+	@if command -v golangci-lint >/dev/null 2>&1; then \
+		golangci-lint run; \
+	else \
+		echo "⚠️  golangci-lint not installed. Install with: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"; \
+	fi
+
+fmt: ## Format Go code
+	@echo "✨ Formatting code..."
+	@go fmt ./...
+
+migrate-up: ## Run database migrations up
+	@echo "⬆️  Running migrations up..."
+	@if command -v migrate >/dev/null 2>&1; then \
+		migrate -path db/migrations -database "$(DATABASE_URL)" up; \
+	else \
+		echo "⚠️  migrate tool not found. Install from: https://github.com/golang-migrate/migrate"; \
+	fi
+
+migrate-down: ## Run database migrations down
+	@echo "⬇️  Running migrations down..."
+	@if command -v migrate >/dev/null 2>&1; then \
+		migrate -path db/migrations -database "$(DATABASE_URL)" down; \
+	else \
+		echo "⚠️  migrate tool not found. Install from: https://github.com/golang-migrate/migrate"; \
+	fi
+
+migrate-create: ## Create a new migration file (usage: make migrate-create NAME=migration_name)
+	@if [ -z "$(NAME)" ]; then \
+		echo "❌ Please provide NAME: make migrate-create NAME=migration_name"; \
+		exit 1; \
+	fi
+	@echo "📝 Creating migration: $(NAME)..."
+	@if command -v migrate >/dev/null 2>&1; then \
+		migrate create -ext sql -dir db/migrations $(NAME); \
+	else \
+		echo "⚠️  migrate tool not found. Install from: https://github.com/golang-migrate/migrate"; \
+	fi
+
+clean: ## Clean build artifacts and dependencies
+	@echo "🧹 Cleaning up..."
+	@rm -rf bin/
+	@rm -f coverage.out coverage.html
+	@go clean
+	@make deps-down
+
+clean-all: clean ## Clean everything including Docker volumes
+	@echo "🧹 Deep cleaning..."
+	@docker compose down -v
+	@docker system prune -f
+
+docker-build: ## Build Docker image
+	@echo "🐳 Building Docker image..."
+	@docker build -t {{.ProjectName}} .
+
+docker-run: docker-build ## Build and run Docker container
+	@echo "🐳 Running Docker container..."
+	@docker run --rm -p 8080:8080 --env-file .env {{.ProjectName}}
+
+dev: deps-up run ## Quick start development (start deps + run app)
+
+restart: ## Restart the application
+	@echo "🔄 Restarting application..."
+	@make deps-down
+	@make deps-up
+	@make run
+
+install-hooks: ## Install Git pre-commit hooks
+	@echo "🪝 Installing Git hooks..."
+	@cp -f scripts/pre-commit .git/hooks/pre-commit 2>/dev/null || echo "⚠️  No pre-commit script found in scripts/"
+	@chmod +x .git/hooks/pre-commit 2>/dev/null || true

@@ -1,0 +1,45 @@
+package main
+
+import (
+	"log"
+
+	"github.com/samber/do"
+	"github.com/labstack/echo/v4"
+
+	"{{.Project.GoModule}}/internal/core"
+{{range .Modules}}
+	{{.}} "{{$.Project.GoModule}}/internal/{{.}}"
+{{- end}}
+)
+
+func main() {
+	container := core.NewContainer()
+	
+	if err := core.RegisterCoreServices(container); err != nil {
+		log.Fatalf("Failed to register core services: %v", err)
+	}
+	
+{{range .Modules}}
+	if err := {{.}}.RegisterModule(container); err != nil {
+		log.Fatalf(core.ErrMsgModuleRegistration, "{{.}}", err)
+	}
+{{- end}}
+	
+	e := do.MustInvoke[*echo.Echo](container)
+	config := do.MustInvoke[*core.Config](container)
+	
+	startServer(e, config.Port)
+	
+	defer func() {
+		if err := container.Shutdown(); err != nil {
+			log.Printf("Error during container shutdown: %v", err)
+		}
+	}()
+}
+
+func startServer(e *echo.Echo, port string) {
+	log.Printf("Server starting on port %s", port)
+	if err := e.Start(":" + port); err != nil {
+		log.Fatalf(core.ErrMsgServerStart, err)
+	}
+}
