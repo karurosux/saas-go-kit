@@ -31,6 +31,7 @@ Available modules: auth, subscription, team, notification, health, role, job, ss
 	rootCmd.AddCommand(commands.ListCmd(modules.ListAvailableModules, listInstalledModulesFromConfig))
 	rootCmd.AddCommand(commands.UpdateCmd(modules.UpdateModule))
 	rootCmd.AddCommand(commands.CrudCmd(crud.GenerateCRUDModule))
+	rootCmd.AddCommand(commands.VersionCmd())
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

@@ -12,7 +12,6 @@ type ListModulesFunc func()
 type ListInstalledModulesFunc func() error
 
 func ListCmd(listModules ListModulesFunc, listInstalled ListInstalledModulesFunc) *cobra.Command {
-func ListCmd(listModules ListModulesFunc, listInstalled ListInstalledModulesFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "list",
 		Short: "List available or installed modules",

@@ -10,7 +10,6 @@ import (
 type UpdateModuleFunc func(moduleName string) error
 
 func UpdateCmd(updateModule UpdateModuleFunc) *cobra.Command {
-func UpdateCmd(updateModule UpdateModuleFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "update [module]",
 		Short: "Update a module to the latest version",

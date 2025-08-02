@@ -10,7 +10,6 @@ import (
 type GenerateClientsFunc func() error
 
 func GenerateCmd(generateClients GenerateClientsFunc) *cobra.Command {
-func GenerateCmd(generateClients GenerateClientsFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "generate",
 		Short: "Generate TypeScript clients and other assets",

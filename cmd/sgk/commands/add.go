@@ -10,7 +10,6 @@ import (
 type AddModuleFunc func(moduleName string, options map[string]interface{}) error
 
 func AddCmd(addModule AddModuleFunc) *cobra.Command {
-func AddCmd(addModule AddModuleFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "add [module]",
 		Short: "Add a module to your project",

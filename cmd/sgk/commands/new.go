@@ -10,7 +10,6 @@ import (
 type NewProjectFunc func(projectName string, modules []string, goModule, database string) error
 
 func NewCmd(createProject NewProjectFunc) *cobra.Command {
-func NewCmd(createProject NewProjectFunc) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "new [project-name]",
 		Short: "Create a new SaaS project with selected modules",

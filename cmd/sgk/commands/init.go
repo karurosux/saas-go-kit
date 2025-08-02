@@ -10,7 +10,6 @@ import (
 type InitProjectFunc func() error
 
 func InitCmd(initProject InitProjectFunc) *cobra.Command {
-func InitCmd(initProject InitProjectFunc) *cobra.Command {
 	return &cobra.Command{
 		Use:   "init",
 		Short: "Initialize a new project with sgk support",
