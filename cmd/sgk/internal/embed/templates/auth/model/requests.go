@@ -14,28 +14,50 @@ var (
 )
 
 type LoginRequest struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
+	Strategy    string         `json:"strategy"`
+	Credentials map[string]any `json:"credentials"`
 }
 
-func (r *LoginRequest) GetEmail() string {
-	return strings.ToLower(strings.TrimSpace(r.Email))
+func (r *LoginRequest) GetStrategy() string {
+	if r.Strategy == "" {
+		return "email_password"
+	}
+	return r.Strategy
 }
 
-func (r *LoginRequest) GetPassword() string {
-	return r.Password
+func (r *LoginRequest) GetCredentials() map[string]any {
+	if r.Credentials == nil {
+		return make(map[string]any)
+	}
+	return r.Credentials
 }
 
 func (r *LoginRequest) Validate() error {
-	if r.GetEmail() == "" {
-		return fmt.Errorf(authconstants.ErrInvalidEmail)
+	strategy := r.GetStrategy()
+	creds := r.GetCredentials()
+	
+	switch strategy {
+	case "email_password":
+		email, ok := creds["email"].(string)
+		if !ok || email == "" {
+			return fmt.Errorf(authconstants.ErrInvalidEmail)
+		}
+		if !emailRegex.MatchString(strings.ToLower(strings.TrimSpace(email))) {
+			return fmt.Errorf(authconstants.ErrInvalidEmail)
+		}
+		password, ok := creds["password"].(string)
+		if !ok || password == "" {
+			return fmt.Errorf(authconstants.ErrInvalidPassword)
+		}
+	case "google", "github", "facebook":
+		code, ok := creds["code"].(string)
+		if !ok || code == "" {
+			return fmt.Errorf("authorization code is required")
+		}
+	default:
+		return fmt.Errorf("unsupported authentication strategy: %s", strategy)
 	}
-	if !emailRegex.MatchString(r.GetEmail()) {
-		return fmt.Errorf(authconstants.ErrInvalidEmail)
-	}
-	if r.GetPassword() == "" {
-		return fmt.Errorf(authconstants.ErrInvalidPassword)
-	}
+	
 	return nil
 }
 

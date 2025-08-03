@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 	
 	authinterface "{{.Project.GoModule}}/internal/auth/interface"
 	authmiddleware "{{.Project.GoModule}}/internal/auth/middleware"
@@ -52,6 +53,11 @@ func (ac *AuthController) RegisterRoutes(e *echo.Echo, basePath string, authMidd
 	group.POST("/forgot-password", ac.ForgotPassword)
 	group.POST("/reset-password", ac.ResetPassword)
 	group.POST("/verify-email", ac.VerifyEmail)
+	
+	// OAuth routes
+	group.GET("/providers", ac.GetProviders)
+	group.GET("/oauth/:provider", ac.OAuthLogin)
+	group.GET("/oauth/:provider/callback", ac.OAuthCallback)
 	
 	protected := group.Group("")
 	protected.Use(authMiddleware.RequireAuth())
@@ -338,4 +344,58 @@ func (ac *AuthController) VerifyPhone(c echo.Context) error {
 	return core.Success(c, map[string]string{
 		"message": "Phone verified successfully",
 	})
+}
+
+func (ac *AuthController) GetProviders(c echo.Context) error {
+	providers := ac.service.GetAvailableProviders(c.Request().Context())
+	
+	return core.Success(c, map[string]interface{}{
+		"providers": providers,
+	})
+}
+
+func (ac *AuthController) OAuthLogin(c echo.Context) error {
+	provider := c.Param("provider")
+	state := c.QueryParam("state")
+	
+	if state == "" {
+		state = fmt.Sprintf("%d", time.Now().Unix())
+	}
+	
+	authURL, err := ac.service.GetOAuthURL(c.Request().Context(), provider, state)
+	if err != nil {
+		return ac.handleError(c, err)
+	}
+	
+	return c.Redirect(http.StatusTemporaryRedirect, authURL)
+}
+
+func (ac *AuthController) OAuthCallback(c echo.Context) error {
+	provider := c.Param("provider")
+	code := c.QueryParam("code")
+	state := c.QueryParam("state")
+	errorParam := c.QueryParam("error")
+	
+	if errorParam != "" {
+		errorDesc := c.QueryParam("error_description")
+		return core.BadRequest(c, fmt.Errorf("OAuth error: %s - %s", errorParam, errorDesc))
+	}
+	
+	if code == "" {
+		return core.BadRequest(c, fmt.Errorf("Authorization code is required"))
+	}
+	
+	session, err := ac.service.HandleOAuthCallback(c.Request().Context(), provider, code, state)
+	if err != nil {
+		return ac.handleError(c, err)
+	}
+	
+	sessionData := map[string]interface{}{
+		"access_token":  session.GetToken(),
+		"refresh_token": session.GetRefreshToken(),
+		"expires_at":    session.GetExpiresAt(),
+		"token_type":    "Bearer",
+	}
+	
+	return core.Success(c, sessionData)
 }

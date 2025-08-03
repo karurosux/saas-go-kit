@@ -54,8 +54,8 @@ type Session interface {
 }
 
 type LoginRequest interface {
-	GetEmail() string
-	GetPassword() string
+	GetStrategy() string
+	GetCredentials() map[string]any
 	Validate() error
 }
 
@@ -87,6 +87,11 @@ type AuthService interface {
 	UpdateAccount(ctx context.Context, accountID uuid.UUID, updates AccountUpdates) (Account, error)
 	
 	ValidateSession(ctx context.Context, token string) (Account, error)
+	
+	// OAuth methods
+	GetOAuthURL(ctx context.Context, provider string, state string) (string, error)
+	HandleOAuthCallback(ctx context.Context, provider string, code string, state string) (Session, error)
+	GetAvailableProviders(ctx context.Context) []string
 }
 
 type AccountRepository interface {
@@ -136,9 +141,6 @@ type EmailSender interface {
 	SendWelcomeEmail(email string) error
 }
 
-type SMSSender interface {
-	SendVerificationSMS(phone, code string) error
-}
 
 type AccountUpdates struct {
 	Email         *string
