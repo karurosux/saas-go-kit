@@ -18,7 +18,8 @@ func main() {
 	if err := core.RegisterCoreServices(container); err != nil {
 		log.Fatalf("Failed to register core services: %v", err)
 	}
-	
+
+  // Register modules
 {{range .Modules}}
 	if err := {{.}}.RegisterModule(container); err != nil {
 		log.Fatalf(core.ErrMsgModuleRegistration, "{{.}}", err)
